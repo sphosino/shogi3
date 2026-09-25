@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三人将棋</title>
+<link rel="stylesheet" href="shogi3.css">
+</head>
+<body>
+  <div id="rules">
+    <h3>✦ 特別ルール①：入玉</h3>
+    <div>敵陣1段目に玉が踏み込めば<span class="highlight">即勝利！</span>（トライルール）</div>
+
+    <h3 style="margin-top:20px;">✦ 特別ルール②：取り駒ルール</h3>
+    <div id="keep-rule-desc-main">取った駒は<span class="highlight">常に持ち駒</span>になります。</div>
+    <div style="font-size:12px;color:#b09070;margin-top:4px;">※「消滅あり」に切り替えると、条件を満たさない限り取った駒は消滅します。</div>
+
+    <div class="warning" id="collusion-warning">
+      ⚠️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は共闘してあなたを狙ってきます。
+    </div>
+  </div>
+
+  <div id="game-container">
+    <div id="info">先手（あなた）の番です</div>
+    <div id="perf-info" style="font-size:11px;color:#aaa;min-height:14px;text-align:center;line-height:1.5;padding:2px 4px;"></div>
+    <div id="think-panel" style="display:none;font-size:11px;color:#ccc;background:#080814;border:1px solid #2a2a4a;border-radius:4px;padding:5px 8px;margin:2px auto;max-width:600px;font-family:monospace;line-height:1.7;height:calc(1.7em * 5 + 10px + 16px);overflow-y:scroll;"></div>
+    <div style="text-align:center;margin:2px 0;">
+      <button id="prev-think-btn" onclick="togglePrevThink()" style="display:none;font-size:11px;padding:2px 10px;background:#0a0a1a;border:1px solid #445;color:#778;border-radius:3px;cursor:pointer;">📋 直前の読み筋を見る</button>
+    </div>
+    <div id="prev-think-panel" style="display:none;font-size:11px;color:#aaa;background:#050510;border:1px solid #1a1a3a;border-radius:4px;padding:5px 8px;margin:2px auto;max-width:600px;font-family:monospace;line-height:1.7;opacity:0.85;height:calc(1.7em * 5 + 10px + 16px);overflow-y:scroll;"></div>
+    <div id="canvas-wrap"><canvas id="c"></canvas></div>
+    <div id="btnRow">
+      <button id="init-btn" onclick="init()">盤面を初期化</button>
+      <button id="hb0" onclick="setHumanPlayerFromEdit(0)" style="background:#6a3500">🔵 青将で対局</button>
+      <button id="hb1" onclick="setHumanPlayerFromEdit(1)">🔴 赤将で対局</button>
+      <button id="hb2" onclick="setHumanPlayerFromEdit(2)">🟢 緑将で対局</button>
+      <button id="view-btn" onclick="setView(viewPlayer===2?0:viewPlayer+1)">👁 視点切替</button>
+      <button id="edit-btn" onclick="toggleEditMode()" style="background:#1a1a3a;border:1px solid #8888ff;color:#aaaaff">✏️ 盤面編集</button>
+      <button id="sp-btn" onclick="toggleSelfPlay()" style="background:#1a3a1a;border:1px solid #33bb55;color:#33bb55">🤖 自己対局</button>
+    </div>
+
+    <!-- 盤面編集パネル -->
+    <div id="edit-panel" style="display:none;background:#0a0a1a;border:1px solid #8888ff;border-radius:8px;padding:12px;margin:8px auto;max-width:600px;font-family:monospace;">
+      <div style="color:#aaaaff;font-size:14px;margin-bottom:8px;text-align:center;">✏️ 盤面編集モード</div>
+      <div style="color:#888;font-size:11px;text-align:center;margin-bottom:10px;">パレットから駒を選んで盤面をクリックで配置　／　盤面の駒をクリックで選択→移動　／　右クリックで削除</div>
+
+      <!-- 脱落設定 -->
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+        <span style="color:#ffaa44;font-size:12px;align-self:center;">脱落：</span>
+        <label style="color:#4488ff;font-size:12px;cursor:pointer;"><input type="checkbox" id="elim0" onchange="setEditElim(0,this.checked)"> 🔵青将</label>
+        <label style="color:#ff4433;font-size:12px;cursor:pointer;"><input type="checkbox" id="elim1" onchange="setEditElim(1,this.checked)"> 🔴赤将</label>
+        <label style="color:#33cc55;font-size:12px;cursor:pointer;"><input type="checkbox" id="elim2" onchange="setEditElim(2,this.checked)"> 🟢緑将</label>
+      </div>
+
+      <!-- 駒パレット -->
+      <div style="margin-bottom:8px;">
+        <div style="color:#aaa;font-size:11px;margin-bottom:4px;text-align:center;">── 駒パレット（クリックで選択） ──</div>
+        <div id="edit-palette" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;"></div>
+      </div>
+
+      <!-- 持ち駒編集 -->
+      <div style="margin-bottom:8px;">
+        <div style="color:#aaa;font-size:11px;margin-bottom:4px;text-align:center;">── 持ち駒 ──</div>
+        <div id="edit-hand" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"></div>
+      </div>
+
+      <div style="color:#888;font-size:11px;text-align:center;">編集後は上の「🔵青将で対局」などのボタンでその局面からスタート</div>
+      <div style="text-align:center;margin-top:8px;">
+        <button onclick="clearEditBoard()" style="background:#1a0a0a;border:1px solid #ff6644;color:#ff8866;font-size:12px;padding:4px 14px;border-radius:4px;cursor:pointer;">🗑️ 盤面を空にする</button>
+        <button onclick="setTwoPlayerPreset()" style="background:#0a1a2a;border:1px solid #4488ff;color:#88aaff;font-size:12px;padding:4px 14px;border-radius:4px;cursor:pointer;margin-left:8px;">♟️ 二人将棋配置</button>
+      </div>
+    </div>
+      <!-- 難易度行 -->
+      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:center;width:100%;">
+        <span id="diff-label" style="color:#ffaa44;font-size:13px;letter-spacing:1px;">⚔️ 難易度: 中級</span>
+        <button id="diff-beginner" onclick="setDifficulty('beginner')" title="CPU思考時間: 0.5秒">🌱 入門<span style="font-size:10px;opacity:0.7;margin-left:3px">0.5s</span></button>
+        <button id="diff-easy"     onclick="setDifficulty('easy')"     title="CPU思考時間: 1秒">🌿 初級<span style="font-size:10px;opacity:0.7;margin-left:3px">1s</span></button>
+        <button id="diff-normal"   onclick="setDifficulty('normal')"   title="CPU思考時間: 2秒">⚔️ 中級<span style="font-size:10px;opacity:0.7;margin-left:3px">2s</span></button>
+        <button id="diff-hard"     onclick="setDifficulty('hard')"     title="CPU思考時間: 4秒">🔥 上級<span style="font-size:10px;opacity:0.7;margin-left:3px">4s</span></button>
+      </div>
+      <!-- 共闘設定行 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;border-top:1px solid #503010;padding-top:8px;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;">
+          <span style="color:#ffaa44;font-size:13px;letter-spacing:1px;">CPU同士の関係：</span>
+          <button id="col-on"  onclick="setCpuCollusion(true)">🤝 共闘</button>
+          <button id="col-off" onclick="setCpuCollusion(false)">⚔ 三つ巴</button>
+        </div>
+        <div id="col-desc" style="font-size:12px;color:#b09070;text-align:center;min-height:16px;"></div>
+      </div>
+      <!-- 取り駒ルール設定行 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;border-top:1px solid #503010;padding-top:8px;margin-top:4px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;">
+          <span style="color:#ffaa44;font-size:13px;letter-spacing:1px;">取り駒ルール：</span>
+          <button id="keep-on"  onclick="setKeepAllPieces('all')">♟ 常に持ち駒</button>
+          <button id="keep-next" onclick="setKeepAllPieces('next')">🎁 お裾分け</button>
+          <button id="keep-off" onclick="setKeepAllPieces(false)">💨 消滅あり</button>
+        </div>
+      </div>
+    </div>
+    <div id="sp-panel" style="display:none;background:#0a1a0a;border:1px solid #33bb55;border-radius:8px;padding:12px;margin:8px auto;max-width:540px;text-align:center;font-family:monospace;">
+      <div style="color:#33bb55;font-size:14px;margin-bottom:6px;">🤖 自己対局モード <span style="color:#ffcc44;font-size:11px;">（⚔ 三つ巴固定）</span></div>
+      <div id="sp-status" style="color:#ffaa44;font-size:13px;margin-bottom:8px;">待機中...</div>
+      <div style="display:flex;justify-content:center;gap:14px;font-size:14px;flex-wrap:wrap;">
+        <div style="min-width:80px">
+          <div style="color:#4488ff">&#x1F535;青将</div>
+          <div><span id="sp-w0" style="font-size:22px;font-weight:bold;color:#4488ff">0</span><span style="color:#666;font-size:11px;">勝</span></div>
+          <div style="color:#4488ff88;font-size:11px;">入玉 <span id="sp-t0">0</span></div>
+          <div style="color:#4488ff66;font-size:11px;">制限 <span id="sp-l0">0</span></div>
+          <div id="sp-p0" style="color:#4488ffaa;font-size:11px;">0%</div>
+        </div>
+        <div style="min-width:80px">
+          <div style="color:#ff4433">&#x1F534;赤将</div>
+          <div><span id="sp-w1" style="font-size:22px;font-weight:bold;color:#ff4433">0</span><span style="color:#666;font-size:11px;">勝</span></div>
+          <div style="color:#ff443388;font-size:11px;">入玉 <span id="sp-t1">0</span></div>
+          <div style="color:#ff443366;font-size:11px;">制限 <span id="sp-l1">0</span></div>
+          <div id="sp-p1" style="color:#ff4433aa;font-size:11px;">0%</div>
+        </div>
+        <div style="min-width:80px">
+          <div style="color:#33bb55">&#x1F7E2;緑将</div>
+          <div><span id="sp-w2" style="font-size:22px;font-weight:bold;color:#33bb55">0</span><span style="color:#666;font-size:11px;">勝</span></div>
+          <div style="color:#33bb5588;font-size:11px;">入玉 <span id="sp-t2">0</span></div>
+          <div style="color:#33bb5566;font-size:11px;">制限 <span id="sp-l2">0</span></div>
+          <div id="sp-p2" style="color:#33bb55aa;font-size:11px;">0%</div>
+        </div>
+        <div style="min-width:80px">
+          <div style="color:#aaa">&#x23F1;制限</div>
+          <div><span id="sp-wd" style="font-size:22px;font-weight:bold;color:#aaa">0</span><span style="color:#666;font-size:11px;">回</span></div>
+          <div style="font-size:11px;color:#666;">平均手数</div>
+          <div id="sp-avg" style="color:#aaa;font-size:13px;font-weight:bold;">-</div>
+        </div>
+      </div>
+      <div id="sp-total" style="color:#888;font-size:12px;margin-top:8px;">0局完了</div>
+      <div id="sp-tryrate" style="color:#ffcc44;font-size:12px;margin-top:2px;">入玉率: -%</div>
+      <button id="sp-stop-btn" onclick="toggleSelfPlay()" style="margin-top:10px;background:#3a0a0a;border:1px solid #ff4433;color:#ff4433;padding:4px 16px;border-radius:4px;cursor:pointer;">&#9632; 停止</button>
+      <button id="sp-resume-btn" onclick="resumeSelfPlay()" style="display:none;margin-top:10px;margin-left:8px;background:#0a2a0a;border:1px solid #33bb55;color:#33bb55;padding:4px 16px;border-radius:4px;cursor:pointer;">▶ 再開</button>
+    </div>
+    <div id="kifu-panel">
+      <div id="kifu-header">📜 棋譜</div>
+      <div id="kifu-list"></div>
+    </div>
+  </div>
+<script src="constants.js"></script>
+<script src="game.js"></script>
+<script src="attack-maps.js"></script>
+<script src="ai.js"></script>
+<script src="render.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
+</html>

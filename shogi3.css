@@ -1,0 +1,148 @@
+﻿
+/* --- 既存のスタイルを一部修正・追加 --- */
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: radial-gradient(ellipse at center, #1a0900 0%, #060200 100%);
+  display: flex; 
+  flex-direction: row; /* 横並びに変更 */
+  align-items: center; 
+  justify-content: center;
+  min-height: 100vh; 
+  user-select: none;
+  font-family: 'Hiragino Mincho Pro', 'Yu Mincho', 'MS Mincho', serif;
+  padding: 8px;
+  gap: 12px;
+}
+
+/* 盤面中央エリア */
+#game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  max-width: 760px;
+}
+
+#info {
+  color: #f0d090; font-size: 18px; margin: 6px 0;
+  letter-spacing: 2px; height: 28px; text-shadow: 0 1px 6px #0008;
+  font-weight: bold;
+}
+
+#canvas-wrap { width: 100%; }
+canvas { display: block; cursor: pointer; border-radius: 4px; width: 100%; height: auto; }
+
+#btnRow { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+button {
+  padding: 8px 12px; background: #3a1500; color: #f0d090;
+  border: 1px solid #804010; font-size: 14px; cursor: pointer;
+  border-radius: 4px; letter-spacing: 1px; font-family: inherit;
+  transition: 0.2s;
+}
+button:hover { background: #5a2800; box-shadow: 0 0 10px rgba(128,64,16,0.5); }
+
+/* --- ルール説明エリア（左側に配置） --- */
+#rules {
+  color: #d0b090; 
+  font-size: 13px; 
+  text-align: left;
+  line-height: 1.8; 
+  width: 260px; /* 固定幅 */
+  background: rgba(40, 20, 0, 0.6);
+  padding: 20px;
+  border-left: 3px solid #804010;
+  border-radius: 4px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+#rules h3 {
+  color: #ffaa44;
+  font-size: 15px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #503010;
+  padding-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#rules ul {
+  margin-left: 18px;
+  margin-bottom: 10px;
+  color: #b09070;
+}
+
+.highlight { color: #ffcc66; font-weight: bold; }
+.warning { color: #ff6655; font-size: 12px; margin-top: 15px; border-top: 1px solid #503010; padding-top: 10px; }
+
+/* 棋譜パネル（game-container内、ボタン下） */
+#kifu-panel {
+  margin-top: 10px;
+  width: 100%;
+  background: rgba(40,20,0,0.5);
+  border: 1px solid #804010;
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+#kifu-header {
+  color: #ffaa44;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #503010;
+}
+#kifu-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-family: 'Hiragino Mincho Pro','Yu Mincho',serif;
+  font-size: 12px;
+  line-height: 1.8;
+}
+#kifu-list div { white-space: nowrap; }
+#kifu-list div.latest { font-weight: bold; background: rgba(255,200,50,0.15); border-radius: 2px; padding: 0 3px; }
+
+/* スマホ等で縦に並べる対応 */
+@media (max-width: 1100px) {
+  body { flex-direction: column; }
+  #rules { width: 100%; max-width: 760px; order: 2; box-sizing: border-box; }
+}
+
+/* 難易度UIバー */
+#diffRow {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(20,8,0,0.55);
+  border: 1px solid #503010;
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+#diffRow button {
+  padding: 8px 12px;
+  font-size: 13px;
+  min-height: 36px;
+  background: #2a1200;
+  color: #c0a060;
+  border: 1px solid #804010;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.15s;
+  letter-spacing: 0.5px;
+}
+#diffRow button:hover { background: #4a2500; color: #ffe090; }
+
+/* スマホ向け細かい調整 */
+@media (max-width: 480px) {
+  #info { font-size: 15px; letter-spacing: 1px; }
+  #btnRow button { padding: 10px 10px; font-size: 13px; }
+  #diffRow button { padding: 10px 10px; min-height: 40px; font-size: 13px; }
+  #diffRow { padding: 10px; }
+  #col-desc { font-size: 13px !important; }
+}
