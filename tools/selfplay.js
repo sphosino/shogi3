@@ -87,7 +87,9 @@ function playGame(ctx, seatParams, defaults){
   return { winner: get('winner'), winType: get('winType'), plies, elimOrder: elim.slice() };
 }
 
-if(!isMainThread){
+module.exports = { makeContext, setParams, playGame };
+
+if(!isMainThread && workerData && workerData.jobs){
   const { jobs, base, cand, time, rule } = workerData;
   const ctx = makeContext();
   vm.runInContext(`keepAllPieces = ${JSON.stringify(rule === 'all' ? 'all' : rule === 'next' ? 'next' : false)};`, ctx);
@@ -107,7 +109,7 @@ if(!isMainThread){
 }
 
 // ── メイン：ワーカーに対局を配って集計 ──
-(async () => {
+if(isMainThread && require.main === module) (async () => {
   const a = parseArgs(process.argv.slice(2));
   const jobs = [];
   for(let i=0;i<a.games;i++) jobs.push({ id: i, candSeat: i % 3 });
