@@ -27,7 +27,7 @@ let AI_TIME_LIMIT_MS        = DIFFICULTY_LEVELS.normal.timeMs; // 人間対局�
 
 // ── AI評価関数定数 ──
 const AI_MOBILITY_SCALE      = 30;    // モビリティ1マスあたりの点数
-const AI_DANGER_SCALE        = 0.8;   // 狙われている駒へのペナルティ係数（駒価値 × この値）
+const AI_DANGER_SCALE        = 0.4;   // 狙われている駒へのペナルティ係数（駒価値 × この値）※自己対局で0.8→0.4が勝率33%→約40%
 const AI_ENTRY_MULT          = 450;   // 入玉距離ボーナス係数（2段目≒3150点、3段目≒450点）
 const AI_ENTRY_BLOCK_RATE    = 0.03;  // 入玉阻止ボーナス係数 ※大きすぎると詰め手より阻止利きを優先して千日手になる
 const AI_KING_SAFETY_MULT    = 200;   // 王安全度スコア係数（安全率×重み）

@@ -18,6 +18,14 @@ attack-maps.js    インクリメンタル利き筋マップ・合法手補助
 ai.js             評価関数・minimax/maxN探索
 render.js         Canvas描画
 ui.js             クリック処理・設定変更・盤面編集モード
+
+tools/selfplay.js Node.jsでのCPU自己対局（パラメータ比較用）
+```
+
+パラメータ比較の例（候補1席 vs 基準2席、互角なら候補勝率≒33%）:
+
+```
+node tools/selfplay.js --games 132 --time 400 --cand '{"AI_DANGER_SCALE":0.4}'
 ```
 
 ## 主な機能
