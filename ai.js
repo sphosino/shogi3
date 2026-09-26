@@ -658,7 +658,7 @@ function kingWouldBeCaptured(bd, o, elim){
 // 直近の探索情報（ベンチマーク・デバッグ用）：各深さの最善値
 let lastSearchInfo = { depthBest: [], reachedDepth: 0 };
 
-function aiMove(o,bd,hd,elim){
+function aiMoveLegacy(o,bd,hd,elim){
   leafEvalCount   = 0;
   moveGenCount    = 0;
   pruneCount      = 0;
@@ -803,6 +803,14 @@ function aiMove(o,bd,hd,elim){
     }
   }
 
+  reportSearch(o, t0, reachedDepth, depthTimes, allResults);
+  inAISearch = false;
+  return best ?? candidates[0] ?? null;
+}
+
+
+// 思考結果の表示（perf-info・読み筋パネル・console）。旧エンジン・新エンジン共用
+function reportSearch(o, t0, reachedDepth, depthTimes, allResults){
   const elapsed = (performance.now() - t0).toFixed(0);
   const perfEl  = document.getElementById('perf-info');
   const thinkEl = document.getElementById('think-panel');
@@ -864,6 +872,4 @@ function aiMove(o,bd,hd,elim){
     thinkEl.style.display = 'none';
   }
 
-  inAISearch = false;
-  return best ?? candidates[0] ?? null;
 }

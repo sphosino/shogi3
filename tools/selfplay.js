@@ -15,7 +15,7 @@ const { execFileSync } = require('child_process');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 const ROOT = path.join(__dirname, '..');
-const SRC_FILES = ['constants.js', 'game.js', 'attack-maps.js', 'ai.js'];
+const SRC_FILES = ['constants.js', 'game.js', 'attack-maps.js', 'ai.js', 'engine.js'];
 
 function parseArgs(argv){
   const a = { games: 60, time: 500, workers: Math.max(1, os.cpus().length - 2),
@@ -31,12 +31,16 @@ function parseArgs(argv){
 }
 
 // ソース読み込み（ref指定時は git show で取得）
+// 古いリビジョンに無いファイル（engine.js など）は読み飛ばす
 function loadSources(ref){
-  return SRC_FILES.map(f => ({
-    f,
-    src: ref ? execFileSync('git', ['show', `${ref}:${f}`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 })
-             : fs.readFileSync(path.join(ROOT, f), 'utf8'),
-  }));
+  const out = [];
+  for(const f of SRC_FILES){
+    try{
+      out.push({ f, src: ref ? execFileSync('git', ['show', `${ref}:${f}`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] })
+                            : fs.readFileSync(path.join(ROOT, f), 'utf8') });
+    }catch(e){ if(!ref) throw e; }
+  }
+  return out;
 }
 
 // ── vmコンテキストにゲームを読み込む ──
