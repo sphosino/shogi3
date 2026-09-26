@@ -19,14 +19,20 @@ ai.js             評価関数・minimax/maxN探索
 render.js         Canvas描画
 ui.js             クリック処理・設定変更・盤面編集モード
 
-tools/selfplay.js Node.jsでのCPU自己対局（パラメータ比較用）
+tools/selfplay.js Node.jsでのCPU自己対局（パラメータ比較・旧版エンジンとの対戦）
+tools/bench.js    固定局面集を固定深さで読むベンチマーク（速度・評価の安定性）
+tools/measure-search.js  到達深さ・探索木内の同一局面の計測
 ```
 
 パラメータ比較の例（候補1席 vs 基準2席、互角なら候補勝率≒33%）:
 
 ```
-node tools/selfplay.js --games 132 --time 400 --cand '{"AI_DANGER_SCALE":0.4}'
+node tools/selfplay.js --games 132 --time 2000 --cand '{"AI_DANGER_SCALE":0.4}'
+node tools/selfplay.js --games 132 --time 2000 --baseRef HEAD   # 作業中のエンジン vs コミット済みエンジン
+node tools/bench.js --depth 3 --out a.json                      # 深さ3の読みにかかる時間
 ```
+
+`--time` は実際の思考時間より200ms長く指定する（2000 = 中級）。400だと実効0.2秒でほぼ深さ1しか読めず、結論が中級に当てはまらないことがある。
 
 ## 主な機能
 
@@ -45,8 +51,10 @@ node tools/selfplay.js --games 132 --time 400 --cand '{"AI_DANGER_SCALE":0.4}'
 |---|---|
 | 探索 | 反復深化 minimax（三つ巴時はパラノイド探索。`AI_THREEWAY_SEARCH` で max^N / BRS に切替可）|
 | 静止探索 | 末端で駒取りのみを最大4手延長（損な取りは除外）し水平線効果を抑制 |
-| 枝刈り | α-β法 + キラームーブ + ランク別スライス |
-| 利き筋 | インクリメンタル差分更新（評価関数も利き筋マップを直接利用） |
+| 枝刈り | α-β法 + 置換表 + futility枝刈り + LMR + ランク別スライス |
+| 並べ替え | 置換表の手 → 駒取り(MVV-LVA) → 入玉・成り → キラー → ヒストリー |
+| 置換表 | Zobristハッシュを指し手ごとに差分更新 |
+| 利き筋 | インクリメンタル差分更新（味方の駒がいるマスにも利きを記録。評価関数も利き筋マップを直接利用） |
 | 評価 | 駒価値 + モビリティ + 王安全度 + 入玉距離ボーナス（入玉成立は勝ちとして終局評価） |
 | 三つ巴戦略 | 戦力差に応じた連合係数・止め刺し係数を動的調整 |
 

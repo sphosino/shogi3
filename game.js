@@ -343,12 +343,15 @@ function applyMove(mv,o){
 // minimaxの内部ノードでボードコピーの代わりに使う
 // 戻り値のundoオブジェクトをundoMoveInPlaceに渡すと完全に元に戻る
 function applyMoveInPlace(bd, hd, elim, mv, o) {
-  const undo = {tryWin: false, entryWin: false, handAdded: null, handAddedTo: -1, handIdx: -1, elimIdx: -1, drop: mv.drop};
+  const undo = {tryWin: false, entryWin: false, handAdded: null, handAddedTo: -1, handIdx: -1, elimIdx: -1, drop: mv.drop, zHi, zLo};
+  const toSq = mv.tr*9+mv.tc;
 
   if (mv.drop) {
+    zToggleHand(o, mv.piece, handCount(hd[o], mv.piece));
     const idx = hd[o].indexOf(mv.piece);
     hd[o].splice(idx, 1);
     bd[mv.tr][mv.tc] = {p: mv.piece, o, pr: false};
+    zToggleCell(toSq, bd[mv.tr][mv.tc]);
     undo.handIdx = idx;
     updateMapsApply(bd, mv, o, undo);
     return undo;
@@ -358,11 +361,14 @@ function applyMoveInPlace(bd, hd, elim, mv, o) {
   const toCell   = bd[mv.tr][mv.tc];
   undo.fromCell = fromCell; // 元オブジェクト参照を保存
   undo.toCell   = toCell;
+  zToggleCell(mv.fr*9+mv.fc, fromCell);
+  if (toCell) zToggleCell(toSq, toCell);
 
   // 王を取る → tryWin + elim更新
   if (toCell && toCell.p === 'OU') {
     bd[mv.tr][mv.tc] = {p: fromCell.p, o, pr: mv.pro || fromCell.pr};
     bd[mv.fr][mv.fc] = null;
+    zToggleCell(toSq, bd[mv.tr][mv.tc]);
     undo.elimIdx = toCell.o;
     elim[toCell.o] = true;
     undo.tryWin = true;
@@ -405,6 +411,7 @@ function applyMoveInPlace(bd, hd, elim, mv, o) {
     }
     if (recipient >= 0) {
       hd[recipient].push(toCell.p);
+      zToggleHand(recipient, toCell.p, handCount(hd[recipient], toCell.p));
       undo.handAdded = toCell.p;
       undo.handAddedTo = recipient;
     }
@@ -413,6 +420,7 @@ function applyMoveInPlace(bd, hd, elim, mv, o) {
   // 駒移動
   bd[mv.tr][mv.tc] = {p: fromCell.p, o, pr: mv.pro || fromCell.pr};
   bd[mv.fr][mv.fc] = null;
+  zToggleCell(toSq, bd[mv.tr][mv.tc]);
 
   if (fromCell.p === 'OU') {
     if ((o===0 && mv.tr<=0) || (o===1 && mv.tr>=8) || (o===2 && mv.tc<=0)) {
@@ -429,6 +437,7 @@ function applyMoveInPlace(bd, hd, elim, mv, o) {
 }
 
 function undoMoveInPlace(bd, hd, elim, mv, o, undo) {
+  zHi = undo.zHi; zLo = undo.zLo;
   if (undo.drop) {
     bd[mv.tr][mv.tc] = null;
     hd[o].splice(undo.handIdx, 0, mv.piece); // 元のインデックスに戻す

@@ -22,7 +22,10 @@ function calcRawScores(b, h, elim){
       const cell = row[c];
       if(!cell) continue;
       const sq = r*9+c, o = cell.o, isElim = o===0?e0:o===1?e1:e2;
-      const reachLen = pieceReach[sq].length;
+      // mobility：利きのうち味方の駒がいないマスの数（利きマップは味方のマスも含むため除く）
+      const reach = pieceReach[sq];
+      let reachLen = 0;
+      for(let i=0;i<reach.length;i++){ const t = b[reach[i].tr][reach[i].tc]; if(!t || t.o !== o) reachLen++; }
       if(cell.p === 'OU'){
         if(o===0){ k0=sq; if(!isElim) mb0+=reachLen; }
         else if(o===1){ k1=sq; if(!isElim) mb1+=reachLen; }
@@ -228,6 +231,86 @@ function orderAndSliceMoves(bd, moves, turnPlayer, depth, sliceRate){
   return res;
 }
 
+// ── 置換表（前の反復の最善手で並べ替え＋αβ境界値で打ち切り）──
+// 三人だと同一局面の再出現は少ないが、反復深化の前回結果を次の反復の並べ替えに使うのが主目的
+const TT_EXACT = 0, TT_LOWER = 1, TT_UPPER = 2;
+const TT_SIZE = 1 << 20, TT_MASK = TT_SIZE - 1;
+const ttKeyHi = new Int32Array(TT_SIZE), ttKeyLo = new Int32Array(TT_SIZE);
+const ttVal = new Float64Array(TT_SIZE), ttMove = new Int32Array(TT_SIZE);
+const ttDepth = new Int8Array(TT_SIZE), ttFlag = new Int8Array(TT_SIZE), ttGen = new Int32Array(TT_SIZE);
+let ttCurGen = 0;          // aiMoveごとに進める（評価はrootAI視点なので探索をまたいで使わない）
+let searchAborted = false; // 時間切れで打ち切った探索の値は置換表に入れない
+
+// 指し手を整数に符号化（0は「なし」）
+function mvCode(mv){
+  return mv.drop ? (1 << 20) | (Z_PIECE_IDX[mv.piece] << 8) | (mv.tr*9+mv.tc)
+                 : ((mv.fr*9+mv.fc) << 8) | (mv.tr*9+mv.tc) | (mv.pro ? 1 << 16 : 0);
+}
+
+// ── ヒストリー（βカットを起こした静かな手の統計）──
+const histTable = new Int32Array(3 * 88 * 81);
+function histIdx(o, mv){
+  return (o*88 + (mv.drop ? 81 + Z_PIECE_IDX[mv.piece] : mv.fr*9+mv.fc))*81 + mv.tr*9+mv.tc;
+}
+
+// ── テンポ補正：末端で誰の手番かに応じた点数（rootAI視点）──
+function tempoBonus(tp, rootAI, elim){
+  if(cpuCollusion || tp < 0 || rootAI < 0) return 0;
+  if(tp === rootAI) return AI_TEMPO_SELF;
+  const nAlive = (elim[0]?0:1) + (elim[1]?0:1) + (elim[2]?0:1);
+  if(nAlive <= 2) return -AI_TEMPO_SELF;
+  return tp === nextAliveOn(elim, rootAI) ? -AI_TEMPO_NEXT : -AI_TEMPO_PREV;
+}
+
+// 手番側の玉に敵の利きがあるか（利きマップ使用）
+function kingAttackedOn(bd, o, elim){
+  const [kr, kc] = findKingOn(bd, o);
+  if(kr < 0) return false;
+  for(const a of squareAttackers[kr*9+kc]) if(a.owner !== o && !elim[a.owner]) return true;
+  return false;
+}
+
+// ── スカラー探索用の並べ替え ──
+// 置換表の手 → 駒取り(MVV-LVA) → 入玉 → 成り → キラー → ヒストリー＋局面ヒューリスティック
+// 戻り値: [{mv, code, quiet}]  quiet=駒取り・成り・入玉以外（futility/LMRの対象）
+function orderMovesScalar(bd, moves, turnPlayer, depth, sliceRate, ttBest){
+  const n = moves.length;
+  const scored = new Array(n);
+  for(let i=0;i<n;i++){
+    const mv = moves[i];
+    const code = mvCode(mv);
+    const piece = mv.drop ? mv.piece : bd[mv.fr][mv.fc].p;
+    const target = mv.drop ? null : bd[mv.tr][mv.tc];
+    const entry = !mv.drop && piece === 'OU' &&
+      ((turnPlayer===0&&mv.tr===0)||(turnPlayer===1&&mv.tr===8)||(turnPlayer===2&&mv.tc===0));
+    const myVal = PV[piece] || 0;
+    let s, quiet = false;
+    if(code === ttBest) s = 1e10;
+    else if(target) s = 1e9 + (PV[target.p]||0) * 16 - myVal / 10 + (mv.pro ? (PVP[piece]||0) : 0);
+    else if(entry) s = 5e8;
+    else if(mv.pro) s = 1e8 + (PVP[piece]||0);
+    else {
+      quiet = true;
+      s = isKiller(depth, mv) ? 9e6 : Math.min(histTable[histIdx(turnPlayer, mv)], 8e6);
+      if(mv.drop) s -= myVal * AI_QMS_HAND_COST;
+      else {
+        for(const a of squareAttackers[mv.fr*9+mv.fc]) if(a.owner !== turnPlayer){ s += myVal * AI_DANGER_SCALE; break; } // 逃げる
+      }
+      for(const a of squareAttackers[mv.tr*9+mv.tc]) if(a.owner !== turnPlayer){ s -= myVal * AI_DANGER_SCALE; break; } // 危険マス
+    }
+    scored[i] = {mv, code, quiet, s};
+  }
+  scored.sort((a,b)=>b.s-a.s);
+  if(AI_USE_SLICE && sliceRate > 0){
+    const keep = Math.max(1, Math.ceil(n * (1 - sliceRate)));
+    const res = [];
+    for(let k=0;k<n;k++) if(k < keep || !scored[k].quiet) res.push(scored[k]);
+    slicedMoveCount += n - res.length;
+    return res;
+  }
+  return scored;
+}
+
 // ── 静止探索（駒取りのみ延長して水平線効果を抑える） ──
 const AI_QS_DEPTH = 4;
 
@@ -313,7 +396,7 @@ function entryWinMaxN(winner, elim){
 
 // スカラー探索用静止探索：rootAI視点の値でαβ
 function qsearchParanoid(bd, hd, elim, turnPlayer, alpha, beta, rootAI, qdepth){
-  const stand = evalStatic(bd, hd, elim, rootAI);
+  const stand = evalStatic(bd, hd, elim, rootAI) + tempoBonus(turnPlayer, rootAI, elim);
   if(qdepth <= 0 || turnPlayer < 0 || elim.filter(e=>!e).length <= 1) return stand;
   const isMin = isMinNode(turnPlayer, rootAI, elim);
   let best = stand;
@@ -323,12 +406,103 @@ function qsearchParanoid(bd, hd, elim, turnPlayer, alpha, beta, rootAI, qdepth){
   for(const mv of caps){
     const undo = applyMoveInPlace(bd, hd, elim, mv, turnPlayer);
     const s = undo.tryWin
-      ? (undo.entryWin ? entryWinScalar(turnPlayer, rootAI) : evalStatic(bd, hd, elim, rootAI))
+      ? (undo.entryWin ? entryWinScalar(turnPlayer, rootAI) : evalStatic(bd, hd, elim, rootAI) + tempoBonus(nextAliveOn(elim, turnPlayer), rootAI, elim))
       : qsearchParanoid(bd, hd, elim, nextAliveOn(elim, turnPlayer), alpha, beta, rootAI, qdepth-1);
     undoMoveInPlace(bd, hd, elim, mv, turnPlayer, undo);
     if(isMin){ if(s < best) best = s; beta = Math.min(beta, s); }
     else     { if(s > best) best = s; alpha = Math.max(alpha, s); }
     if(beta <= alpha) break;
+  }
+  return best;
+}
+
+// ── スカラーαβ探索（パラノイド／共闘）──
+// 値はrootAI視点。isMin=相手側（値を下げたい）ノード。fail-soft。
+function searchScalar(bd, hd, elim, depth, alpha, beta, turnPlayer, rootAI, pvArr, maxDepth, t0, timeLimit, sliceRate, isMin){
+  const alpha0 = alpha, beta0 = beta;
+
+  // 置換表を引く
+  let ttIdx = -1, kHi = 0, kLo = 0, ttBest = 0;
+  if(AI_USE_TT){
+    const zi = turnPlayer*8 + (elim[0]?1:0) + (elim[1]?2:0) + (elim[2]?4:0);
+    kHi = zHi ^ ZT_HI[zi]; kLo = zLo ^ ZT_LO[zi];
+    ttIdx = kLo & TT_MASK;
+    if(ttGen[ttIdx] === ttCurGen && ttKeyHi[ttIdx] === kHi && ttKeyLo[ttIdx] === kLo){
+      ttBest = ttMove[ttIdx];
+      if(ttDepth[ttIdx] >= depth){
+        const v = ttVal[ttIdx], f = ttFlag[ttIdx];
+        if(f === TT_EXACT || (f === TT_LOWER && v >= beta) || (f === TT_UPPER && v <= alpha)) return v;
+      }
+    }
+  }
+
+  // futility：末端付近で静的評価が窓から大きく外れていれば、静かな手は読まない
+  let futile = false, futileVal = 0;
+  if(AI_USE_FUTILITY && depth <= 2 && !cpuCollusion){
+    const margin = depth === 1 ? AI_FUTILITY_MARGIN1 : AI_FUTILITY_MARGIN2;
+    const stand = evalStatic(bd, hd, elim, rootAI) + tempoBonus(turnPlayer, rootAI, elim);
+    if(isMin ? stand - margin >= beta : stand + margin <= alpha){
+      if(!kingAttackedOn(bd, turnPlayer, elim)){ futile = true; futileVal = isMin ? stand - margin : stand + margin; }
+    }
+  }
+
+  const raw = movesOnly(bd, hd, turnPlayer, elim);
+  depthMoveGen[depth] = (depthMoveGen[depth]||0) + raw.length;
+  depthNodeCount[depth] = (depthNodeCount[depth]||0) + 1;
+  const entries = orderMovesScalar(bd, raw, turnPlayer, depth, sliceRate, ttBest);
+
+  const wantPV = pvArr && maxDepth - depth < 2; // 読み筋表示は上の方だけ
+  let best = isMin ? Infinity : -Infinity, bestCode = 0, searched = 0;
+  for(let i=0;i<entries.length;i++){
+    const e = entries[i], mv = e.mv;
+    if(futile && e.quiet && e.code !== ttBest){
+      if(isMin ? futileVal < best : futileVal > best) best = futileVal;
+      continue;
+    }
+    const pvPiece = wantPV ? (mv.drop ? mv.piece : bd[mv.fr][mv.fc].p) : null;
+    const pvPr = wantPV ? (!mv.drop && !!bd[mv.fr][mv.fc].pr) : false;
+
+    const undo = applyMoveInPlace(bd, hd, elim, mv, turnPlayer);
+    let score;
+    const childPV = wantPV ? [] : null;
+    if(undo.tryWin){
+      // 玉取り or 入玉：終局扱い（玉取りは脱落後の局面を正規評価）
+      score = undo.entryWin ? entryWinScalar(turnPlayer, rootAI)
+                            : evalStatic(bd, hd, elim, rootAI) + tempoBonus(nextAliveOn(elim, turnPlayer), rootAI, elim);
+    } else {
+      const nxt = nextAliveOn(elim, turnPlayer);
+      // LMR：後ろの方の静かな手は1手浅く読み、窓を更新しそうなら読み直す
+      const reduce = (AI_USE_LMR && depth >= AI_LMR_MIN_DEPTH && e.quiet && searched >= AI_LMR_MIN_MOVES &&
+                      e.code !== ttBest && !isKiller(depth, mv)) ? 1 : 0;
+      score = minimaxRound(bd, hd, elim, depth-1-reduce, alpha, beta, nxt, rootAI, childPV, maxDepth, t0, timeLimit, -1, -Infinity, sliceRate);
+      if(reduce && (isMin ? score < beta : score > alpha)){
+        if(childPV) childPV.length = 0;
+        score = minimaxRound(bd, hd, elim, depth-1, alpha, beta, nxt, rootAI, childPV, maxDepth, t0, timeLimit, -1, -Infinity, sliceRate);
+      }
+    }
+    undoMoveInPlace(bd, hd, elim, mv, turnPlayer, undo);
+    searched++;
+    depthMoveExplore[depth] = (depthMoveExplore[depth]||0) + 1;
+
+    if(isMin ? score < best : score > best){
+      best = score; bestCode = e.code;
+      if(wantPV){ pvArr.length=0; pvArr.push({...mv,pvPiece,pvPr,pvOwner:turnPlayer},...(childPV||[])); }
+    }
+    if(isMin) beta = Math.min(beta, score); else alpha = Math.max(alpha, score);
+    if(beta <= alpha){
+      pruneCount++;
+      if(e.quiet){ registerKiller(depth, mv); histTable[histIdx(turnPlayer, mv)] += depth*depth; }
+      break;
+    }
+    if(t0 && performance.now() - t0 >= timeLimit){ searchAborted = true; break; }
+  }
+  // 合法手なし
+  if(best === Infinity || best === -Infinity) best = evalStatic(bd, hd, elim, rootAI) + tempoBonus(turnPlayer, rootAI, elim);
+
+  if(ttIdx >= 0 && !searchAborted && (ttGen[ttIdx] !== ttCurGen || depth >= ttDepth[ttIdx] || (ttKeyHi[ttIdx] === kHi && ttKeyLo[ttIdx] === kLo))){
+    ttGen[ttIdx] = ttCurGen; ttKeyHi[ttIdx] = kHi; ttKeyLo[ttIdx] = kLo;
+    ttVal[ttIdx] = best; ttDepth[ttIdx] = depth; ttMove[ttIdx] = bestCode;
+    ttFlag[ttIdx] = best <= alpha0 ? TT_UPPER : best >= beta0 ? TT_LOWER : TT_EXACT;
   }
   return best;
 }
@@ -352,6 +526,7 @@ function minimaxRound(bd, hd, elim, depth, alpha, beta, turnPlayer, rootAI=-1, p
     const isMin = isMinNode(turnPlayer, rootAI, elim);
     // BRS：最小化ノードでは生存している相手全員の手をまとめて生成
     const brs = !cpuCollusion && AI_THREEWAY_SEARCH === 'brs' && isMin;
+    if(!brs) return searchScalar(bd, hd, elim, depth, alpha, beta, turnPlayer, rootAI, pvArr, maxDepth, t0, timeLimit, sliceRate, isMin);
     let moves;
     if(brs){
       const lists = [];
@@ -480,6 +655,9 @@ function kingWouldBeCaptured(bd, o, elim){
   return false;
 }
 
+// 直近の探索情報（ベンチマーク・デバッグ用）：各深さの最善値
+let lastSearchInfo = { depthBest: [], reachedDepth: 0 };
+
 function aiMove(o,bd,hd,elim){
   leafEvalCount   = 0;
   moveGenCount    = 0;
@@ -494,7 +672,12 @@ function aiMove(o,bd,hd,elim){
   const t0 = performance.now();
   inAISearch = true;
   resetKillers();
+  histTable.fill(0);
+  ttCurGen++;
+  searchAborted = false;
+  lastSearchInfo = { depthBest: [], reachedDepth: 0 };
   buildAttackMaps(bd); // 双方向利き筋マップ初期構築
+  zobristInit(bd, hd);
   let {moves, attackedBy: rootAttackedBy}=allMovesOn(bd,hd,o,elim);
 
   if(!moves.length) return null;
@@ -606,6 +789,8 @@ function aiMove(o,bd,hd,elim){
     orderedCands = iterResults.map(r => r.mv);
     lastCompleteResults = iterResults;
     reachedDepth = d;
+    lastSearchInfo.depthBest.push(iterResults[0].rawV);
+    lastSearchInfo.reachedDepth = d;
     depthTimes.push(`d${d}:${(performance.now()-t0).toFixed(0)}ms`);
   }
 

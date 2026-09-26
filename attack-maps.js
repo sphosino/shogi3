@@ -5,6 +5,8 @@ let gAttackedBy = {}; // quickMoveScore用（rootのみ使用）
 // ── 双方向利き筋マップ ──
 // squareAttackers[sq] = [{fr,fc,owner,isSlide,dr,dc}, ...]  そのマスに利いている駒
 // pieceReach[sq]      = [{tr,tc,isSlide,dr,dc}, ...]        その駒が利いているマス
+// 利きは味方の駒がいるマスにも入る（＝紐が付いている）。飛・角・香は最初に駒があるマスまで。
+// こうすると歩・金・銀などの利きは周りの駒で変わらず、差分更新は走り駒の伸縮だけで済む。
 let squareAttackers = new Array(81).fill(null).map(()=>[]);
 let pieceReach      = new Array(81).fill(null).map(()=>[]);
 
@@ -18,14 +20,13 @@ function computePieceReach(bd, r, c){
   const addStep = (dr, dc) => {
     const [rdr,rdc] = rotDir(dr,dc,o);
     const nr=r+rdr, nc=c+rdc;
-    if(!inB(nr,nc) || bd[nr][nc]?.o===o) return;
+    if(!inB(nr,nc)) return;
     result.push({tr:nr, tc:nc, isSlide:false, dr:rdr, dc:rdc});
   };
 
   const addSlide = (dr, dc) => {
     let nr=r+dr, nc=c+dc;
     while(inB(nr,nc)){
-      if(bd[nr][nc]?.o===o) break;
       result.push({tr:nr, tc:nc, isSlide:true, dr, dc});
       if(bd[nr][nc]) break;
       nr+=dr; nc+=dc;
@@ -42,7 +43,6 @@ function computePieceReach(bd, r, c){
       const [kdr,kdc]=rotDir(-1,0,o);
       let knr=r+kdr, knc=c+kdc;
       while(inB(knr,knc)){
-        if(bd[knr][knc]?.o===o) break;
         result.push({tr:knr, tc:knc, isSlide:true, dr:kdr, dc:kdc});
         if(bd[knr][knc]) break;
         knr+=kdr; knc+=kdc;
@@ -92,7 +92,6 @@ function extendSlidesFrom(bd, r, c){
     if(!isSlide) continue;
     let nr=r+dr, nc=c+dc;
     while(inB(nr,nc)){
-      if(bd[nr][nc]?.o===owner) break;
       pieceReach[fr*9+fc].push({tr:nr,tc:nc,isSlide:true,dr,dc});
       squareAttackers[nr*9+nc].push({fr,fc,owner,isSlide:true,dr,dc});
       if(bd[nr][nc]) break;
@@ -128,6 +127,45 @@ function buildAttackMaps(bd){
     if(!bd[r][c]) continue;
     const reach = computePieceReach(bd,r,c);
     addPieceToMaps(r,c,reach,bd[r][c].o);
+  }
+}
+
+// ── Zobristハッシュ（置換表用）──
+// applyMoveInPlace で差分更新し、undoMoveInPlace で保存値に戻す。
+// 盤上：(マス, 駒種×成り, 持ち主)、持ち駒：(持ち主, 駒種, 枚数k) を k=1..枚数 すべてXOR
+// 手番と脱落状態は置換表を引くときに混ぜる（ZT_*）
+const Z_PIECE_IDX = {FU:0, KY:1, KE:2, GIN:3, KIN:4, KAKU:5, HI:6, OU:7};
+const ZB_HI = new Int32Array(81*48), ZB_LO = new Int32Array(81*48);
+const ZH_HI = new Int32Array(3*8*20), ZH_LO = new Int32Array(3*8*20);
+const ZT_HI = new Int32Array(3*8),    ZT_LO = new Int32Array(3*8);
+(function(){
+  let s = 0x2545F491;
+  const rnd = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return s | 0; };
+  for(const arr of [ZB_HI, ZB_LO, ZH_HI, ZH_LO, ZT_HI, ZT_LO]) for(let i=0;i<arr.length;i++) arr[i] = rnd();
+})();
+let zHi = 0, zLo = 0;
+
+function zToggleCell(sq, cell){
+  const i = sq*48 + (Z_PIECE_IDX[cell.p]*2 + (cell.pr?1:0))*3 + cell.o;
+  zHi ^= ZB_HI[i]; zLo ^= ZB_LO[i];
+}
+function zToggleHand(o, p, count){
+  if(count <= 0 || count >= 20) return;
+  const i = (o*8 + Z_PIECE_IDX[p])*20 + count;
+  zHi ^= ZH_HI[i]; zLo ^= ZH_LO[i];
+}
+function handCount(arr, p){
+  let n = 0;
+  for(let i=0;i<arr.length;i++) if(arr[i] === p) n++;
+  return n;
+}
+// 局面全体からハッシュを計算
+function zobristInit(bd, hd){
+  zHi = 0; zLo = 0;
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++) if(bd[r][c]) zToggleCell(r*9+c, bd[r][c]);
+  for(let o=0;o<3;o++) for(const p in Z_PIECE_IDX){
+    const n = handCount(hd[o], p);
+    for(let k=1;k<=n;k++) zToggleHand(o, p, k);
   }
 }
 

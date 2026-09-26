@@ -38,6 +38,22 @@ const AI_COALITION_THRESHOLD = 1500;  // 連合発動の独走スコア差しき
 const AI_COALITION_MULT      = 0.5;   // 連合時の上位プレイヤーへの重み増加量
 const AI_FINISH_MULT         = 0.4;   // 1位が弱い敵を狙う際の重み増加量
 
+// ── テンポ（末端局面で誰の手番か）──
+// 静的評価は手番を見ないので、読みを止めた深さで評価がぶれる。末端の手番に応じて補正する（rootAI視点）
+const AI_TEMPO_SELF          = 0;     // 自分の手番（2人残りのときは相手手番で -この値）
+const AI_TEMPO_NEXT          = 0;     // 自分の次の相手の手番（相手2人が自分より先に指す）→ -この値
+const AI_TEMPO_PREV          = 0;     // 自分の前の相手の手番（相手1人が自分より先に指す）→ -この値
+
+// ── 探索の枝刈り・並べ替え（1=有効, 0=無効）──
+const AI_USE_TT              = 1;     // 置換表（前の反復の最善手を先に読む＋境界値で打ち切り）
+const AI_USE_FUTILITY        = 1;     // 末端付近で、静かな手では形勢が変わりそうにないとき読まない
+const AI_FUTILITY_MARGIN1    = 400;   // 残り深さ1の余裕幅
+const AI_FUTILITY_MARGIN2    = 900;   // 残り深さ2の余裕幅
+const AI_USE_LMR             = 1;     // 後ろの方の静かな手は1手浅く読み、良さそうなら読み直す
+const AI_LMR_MIN_DEPTH       = 2;     // LMRを使う最小の残り深さ
+const AI_LMR_MIN_MOVES       = 4;     // この手数を読んだ後の手からLMR対象
+const AI_USE_SLICE           = 1;     // root順位に応じた静かな手の足切り（旧方式）
+
 // ── quickMoveScore定数 ──
 const AI_QMS_HAND_COST       = 0.3;   // 持ち駒を打つコスト率（不要な打ちを抑制）
 
