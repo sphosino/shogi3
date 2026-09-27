@@ -1,7 +1,7 @@
 """自己対局 → 学習 → 評価 のループ（docs/training.md の同期版）。
 
 使い方（リポジトリ直下）:
-  python/.venv/Scripts/python.exe python/scripts/train_loop.py --run test1 --gens 5 --games-per-gen 200
+  python/.venv/Scripts/python.exe python/scripts/train_loop.py --run test1 --gens 6 --games-per-gen 500
 
 runs/<run>/ に、学習データ（selfplay/）、モデル（models/）、評価結果（eval.jsonl）、ログ（log.txt）を置く。
 途中で止めても、最後に保存した世代から再開する。
@@ -22,7 +22,7 @@ import shogi3_rs  # noqa: E402
 from shogi3ml import data as D  # noqa: E402
 from shogi3ml import model as M  # noqa: E402
 from shogi3ml.selfplay import run_driver  # noqa: E402
-from shogi3ml.train import train_steps  # noqa: E402
+from shogi3ml.train import train_steps, value_check  # noqa: E402
 
 
 def parse():
@@ -36,12 +36,14 @@ def parse():
     p.add_argument("--full-prob", type=float, default=0.25)
     p.add_argument("--scaffold-games", type=int, default=2000, help="最初の世代（足場の評価器）の対局数")
     p.add_argument("--scaffold-procs", type=int, default=16)
-    p.add_argument("--train-steps", type=int, default=1000)
+    p.add_argument("--train-ratio", type=float, default=1.0, help="1世代の学習サンプル数 ÷ 新しく増えた局面数")
     p.add_argument("--batch", type=int, default=256)
     p.add_argument("--lr", type=float, default=0.02)
     p.add_argument("--window", type=int, default=250_000, help="学習に使う直近の局面数")
-    p.add_argument("--blocks", type=int, default=10)
-    p.add_argument("--ch", type=int, default=128)
+    p.add_argument("--blocks", type=int, default=6)
+    p.add_argument("--ch", type=int, default=96)
+    p.add_argument("--weight-decay", type=float, default=1e-4)
+    p.add_argument("--q-mix", type=float, default=0.5, help="価値のターゲットに混ぜるMCTS根の価値の割合")
     p.add_argument("--eval-every", type=int, default=2)
     p.add_argument("--eval-games", type=int, default=60)
     p.add_argument("--eval-visits", type=int, default=200)
@@ -124,17 +126,20 @@ def main():
         model = M.Net(blocks=a.blocks, ch=a.ch).to(device)
         M.save(model, model_path(0))
     model.eval()
-    opt = torch.optim.SGD(model.parameters(), lr=a.lr, momentum=0.9, weight_decay=3e-5, nesterov=True)
+    opt = torch.optim.SGD(model.parameters(), lr=a.lr, momentum=0.9, weight_decay=a.weight_decay, nesterov=True)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
     for _ in range(a.gens):
-        # 学習
+        # 学習：ステップ数は、直近のシャード（新しく増えた局面）の数 × train_ratio ÷ バッチ
         t = time.time()
         win = D.Window(shard_dir, a.window)
-        L = train_steps(model, opt, scaler, win, a.train_steps, a.batch, device, rng)
+        newest = sorted(glob.glob(os.path.join(shard_dir, "*.npz")))[-1]
+        new_pos = len(D.load_shard(newest)["winner"])
+        steps = max(1, int(np.ceil(new_pos * a.train_ratio / a.batch)))
+        L = train_steps(model, opt, scaler, win, steps, a.batch, device, rng, q_mix=a.q_mix)
         gen += 1
         M.save(model, model_path(gen), extra=dict(train=L))
-        log(f"世代{gen}: 学習 {a.train_steps}ステップ（窓 {win.n}局面/{win.files}シャード）{time.time()-t:.0f}秒 "
+        log(f"世代{gen}: 学習 {steps}ステップ（新規 {new_pos}局面、窓 {win.n}局面/{win.files}シャード）{time.time()-t:.0f}秒 "
             + " ".join(f"{k}={v:.3f}" for k, v in L.items()))
 
         # 自己対局
@@ -146,6 +151,11 @@ def main():
         d = D.decode(run_driver(drv, {0: model}, device, stats))
         D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
         log(f"  自己対局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+        # 過学習の監視：まだ学習に使っていない、今の自己対局のデータで価値を測る
+        vc = value_check(model, d, device)
+        log(f"  価値（未学習データ）: 損失 {vc['loss']:.3f} 正解率 {vc['acc']*100:.1f}%（60手未満 {vc['acc_early']*100:.1f}%）")
+        with open(os.path.join(root, "value_check.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(dict(gen=gen, train=L, heldout=vc), ensure_ascii=False) + chr(10))
 
         # 評価
         if gen % a.eval_every == 0:

@@ -50,8 +50,11 @@ class GlobalPoolBlock(nn.Module):
 
 
 class Net(nn.Module):
-    def __init__(self, blocks: int = 10, ch: int = 128, gp_blocks=(3, 7)):
+    def __init__(self, blocks: int = 6, ch: int = 96, gp_blocks=None):
         super().__init__()
+        if gp_blocks is None:
+            # グローバルプーリングのブロックは全体の1/3と2/3の位置（6ブロックなら2と4）
+            gp_blocks = (blocks // 3, 2 * blocks // 3)
         self.config = dict(blocks=blocks, ch=ch, gp_blocks=tuple(gp_blocks))
         self.stem = nn.Sequential(nn.Conv2d(IN_CHANNELS, ch, 3, padding=1, bias=False), nn.BatchNorm2d(ch), nn.ReLU())
         self.trunk = nn.ModuleList([GlobalPoolBlock(ch) if i in gp_blocks else ResBlock(ch) for i in range(blocks)])

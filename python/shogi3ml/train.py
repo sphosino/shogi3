@@ -13,7 +13,9 @@ def _masked_value_logits(logits, alive):
     return logits.float().masked_fill(~alive, -1e4)
 
 
-def losses(model, b: dict) -> dict:
+def losses(model, b: dict, q_mix: float = 0.5) -> dict:
+    """q_mix: 価値のターゲットに混ぜる MCTS 根の価値の割合（0 なら勝者のみ）。
+    三人では序盤の勝敗の雑音が大きく、勝者だけだと対局ごとの暗記（過学習）が起きたため混ぜる。"""
     st = b["states"]
     with torch.autocast("cuda", dtype=torch.float16, enabled=st.is_cuda):
         out = model(planes(st), aux=True)
@@ -24,9 +26,10 @@ def losses(model, b: dict) -> dict:
     pl = -(b["policy"] * logp).sum(dim=1)
     w = b["policy_w"]
     L["policy"] = (pl * w).sum() / w.sum().clamp(min=1.0)
-    # 価値（勝者）
+    # 価値：勝者の one-hot と MCTS 根の価値を混ぜたソフトラベル
     vlog = _masked_value_logits(out["value"], alive)
-    L["value"] = F.cross_entropy(vlog, b["winner"])
+    target = (1 - q_mix) * F.one_hot(b["winner"], 3).float() + q_mix * b["root_value"]
+    L["value"] = -(target * F.log_softmax(vlog, dim=1)).sum(dim=1).mean()
     # 順位（1..3 → 0..2）
     L["rank"] = F.cross_entropy(out["rank"].float().reshape(-1, 3), (b["rank"] - 1).clamp(0, 2).reshape(-1))
     L["next_elim"] = F.cross_entropy(out["next_elim"].float(), b["next_elim"])
@@ -46,13 +49,13 @@ def losses(model, b: dict) -> dict:
     return L
 
 
-def train_steps(model, opt, scaler, window, steps: int, batch: int, device, rng: np.random.Generator, log=None):
+def train_steps(model, opt, scaler, window, steps: int, batch: int, device, rng: np.random.Generator, log=None, q_mix: float = 0.5):
     model.train()
     hist = []
     for s in range(steps):
         idx = rng.integers(0, window.n, size=batch)
         b = window.batch(idx, device)
-        L = losses(model, b)
+        L = losses(model, b, q_mix)
         opt.zero_grad(set_to_none=True)
         scaler.scale(L["total"]).backward()
         scaler.step(opt)
@@ -63,3 +66,21 @@ def train_steps(model, opt, scaler, window, steps: int, batch: int, device, rng:
             log(f"  step {s+1}/{steps} " + " ".join(f"{k}={v:.3f}" for k, v in m.items()))
     model.eval()
     return {k: float(np.mean([h[k] for h in hist])) for k in hist[-1]} if hist else {}
+
+
+@torch.inference_mode()
+def value_check(model, data: dict, device, n: int = 20000, seed: int = 0) -> dict:
+    """学習に使っていないデータでの価値の損失（勝者に対する交差エントロピー）と正解率。過学習の監視用"""
+    N = len(data["winner"])
+    idx = np.random.default_rng(seed).choice(N, min(N, n), replace=False)
+    st = torch.from_numpy(data["states"][idx]).to(device)
+    w = torch.from_numpy(data["winner"][idx].astype(np.int64)).to(device)
+    model.eval()
+    with torch.autocast("cuda", dtype=torch.float16, enabled=st.is_cuda):
+        out = model(planes(st), aux=False)
+    v = _masked_value_logits(out["value"], alive_mask(st))
+    ply = data["states"][idx, 106].astype(int) + data["states"][idx, 107].astype(int) * 256
+    acc = (v.argmax(1) == w).float().cpu().numpy()
+    early = ply < 60
+    return dict(loss=float(F.cross_entropy(v, w)), acc=float(acc.mean()),
+                acc_early=float(acc[early].mean()) if early.any() else float("nan"))

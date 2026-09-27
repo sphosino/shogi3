@@ -112,6 +112,7 @@ class Window:
             "policy": torch.from_numpy(pol).to(device),
             "policy_w": torch.from_numpy(full).to(device),
             "winner": t("winner", torch.long),
+            "root_value": t("root_value"),
             "rank": t("rank", torch.long),
             "next_elim": t("next_elim", torch.long),
             "loss20": t("loss20"),
