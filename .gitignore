@@ -1,3 +1,6 @@
 v4_*.png
 verify*.png
 verify_test.js
+engine-rs/target/
+engine-rs/core/tests/fixtures/
+runs/
