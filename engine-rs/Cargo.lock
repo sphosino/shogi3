@@ -84,6 +84,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "shogi3-mcts"
+version = "0.1.0"
+dependencies = [
+ "shogi3-core",
+]
+
+[[package]]
 name = "syn"
 version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

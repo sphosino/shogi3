@@ -1,0 +1,8 @@
+[package]
+name = "shogi3-mcts"
+version = "0.1.0"
+edition = "2021"
+description = "三人将棋の3人用MCTS・評価器・比較用エージェント"
+
+[dependencies]
+shogi3-core = { path = "../core" }
