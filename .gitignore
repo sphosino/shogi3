@@ -4,3 +4,6 @@ verify_test.js
 engine-rs/target/
 engine-rs/core/tests/fixtures/
 runs/
+python/.venv/
+__pycache__/
+*.pyc

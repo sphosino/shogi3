@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["core", "mcts"]
+members = ["core", "mcts", "py"]
 
 [profile.release]
 opt-level = 3

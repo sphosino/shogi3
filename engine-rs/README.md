@@ -6,7 +6,7 @@
 |---|---|---|
 | `core` (shogi3-core) | ルールエンジン：盤面・指し手生成・指す・終局判定・ハッシュ | 実装済み・JS実装と照合済み |
 | `mcts` (shogi3-mcts) | 3人用MCTS・足場の評価器・比較用エージェント（ランダム／1手読みの駒得優先） | 実装済み |
-| `selfplay` / `arena` / `py` | 自己対局・評価対局・Pythonバインディング | 未着手 |
+| `py` (shogi3_rs) | Pythonから使う自己対局ドライバ（数百局を同時に進め、推論をまとめてPythonに渡す。学習データを作る） | 実装済み |
 
 ## テスト（JS実装との照合）
 
@@ -47,3 +47,14 @@ cargo run --release --example arena -- --cand mcts:400 --base greedy --games 60 
 | mcts:1600 vs greedy | 95.0% |
 
 1局の時間：mcts:400 で約1秒（1スレッド、足場の評価器）。
+
+## Pythonモジュールのビルド
+
+```
+python -m venv python/.venv
+python/.venv/Scripts/python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu128
+python/.venv/Scripts/python.exe -m pip install numpy maturin tensorboard
+VIRTUAL_ENV=python/.venv python/.venv/Scripts/maturin.exe develop --release -m engine-rs/py/Cargo.toml
+```
+
+自己対局の速度（ランダム初期化の10ブロック×128ch、RTX 3080、`python/scripts/bench_selfplay.py`）：同時512局で約4.2万評価/秒（推論84%・MCTS16%）。

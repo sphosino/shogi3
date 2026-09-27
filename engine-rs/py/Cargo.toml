@@ -1,0 +1,14 @@
+[package]
+name = "shogi3-py"
+version = "0.1.0"
+edition = "2021"
+description = "Pythonから使う自己対局ドライバ（MCTSはRust、推論はPython側のPyTorch）"
+
+[lib]
+name = "shogi3_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+shogi3-core = { path = "../core" }
+shogi3-mcts = { path = "../mcts" }
+pyo3 = { version = "0.22", features = ["extension-module"] }
