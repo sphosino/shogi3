@@ -47,6 +47,8 @@ def parse():
     p.add_argument("--eval-every", type=int, default=2)
     p.add_argument("--eval-games", type=int, default=60)
     p.add_argument("--eval-visits", type=int, default=200)
+    p.add_argument("--eval-vs", nargs="+", default=["scaffold", "prev"],
+                   help="評価の相手: scaffold（足場のMCTS）/ prev（eval_every世代前）/ gen:N（固定の世代）")
     p.add_argument("--seed", type=int, default=1)
     return p.parse_args()
 
@@ -157,19 +159,22 @@ def main():
         with open(os.path.join(root, "value_check.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(dict(gen=gen, train=L, heldout=vc), ensure_ascii=False) + chr(10))
 
-        # 評価
+        # 評価（相手は --eval-vs。固定の相手にすると世代ごとの推移が比べやすい）
         if gen % a.eval_every == 0:
-            res = []
-            res.append(evaluate({0: model}, ["net:0", f"scaffold:{a.eval_visits}", f"scaffold:{a.eval_visits}"],
-                                a.eval_games, a.eval_visits, device, 7 + gen))
-            prev = max(0, gen - a.eval_every)
-            prev_model = M.load(model_path(prev), device).eval()
-            res.append(evaluate({0: model, 1: prev_model}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen))
-            for r in res:
-                r["gen"] = gen
-                log(f"  評価 {r['seats'][0]} vs {r['seats'][1]}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒")
+            for opp in a.eval_vs:
+                if opp == "scaffold":
+                    r = evaluate({0: model}, ["net:0", f"scaffold:{a.eval_visits}", f"scaffold:{a.eval_visits}"],
+                                 a.eval_games, a.eval_visits, device, 7 + gen)
+                    name = f"scaffold:{a.eval_visits}"
+                else:
+                    og = max(0, gen - a.eval_every) if opp == "prev" else int(opp.split(":")[1])
+                    other = M.load(model_path(og), device).eval()
+                    r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen)
+                    name = f"gen{og}"
+                r.update(gen=gen, opponent=name)
+                log(f"  評価 世代{gen} vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒")
                 with open(os.path.join(root, "eval.jsonl"), "a", encoding="utf-8") as f:
-                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+                    f.write(json.dumps(r, ensure_ascii=False) + chr(10))
     log("終了")
 
 
