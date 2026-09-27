@@ -76,7 +76,7 @@ class Window:
     """直近のシャードから学習用の局面を集めたもの（リプレイバッファ）"""
 
     def __init__(self, shard_dir: str, max_positions: int):
-        files = sorted(glob.glob(os.path.join(shard_dir, "*.npz")))
+        files = sorted(glob.glob(os.path.join(shard_dir, "*.npz")), key=os.path.getmtime)  # 作られた順
         parts, total = [], 0
         for f in reversed(files):
             d = load_shard(f)

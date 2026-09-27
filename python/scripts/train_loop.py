@@ -133,7 +133,7 @@ def main():
         # 学習：ステップ数は、直近のシャード（新しく増えた局面）の数 × train_ratio ÷ バッチ
         t = time.time()
         win = D.Window(shard_dir, a.window)
-        newest = sorted(glob.glob(os.path.join(shard_dir, "*.npz")))[-1]
+        newest = max(glob.glob(os.path.join(shard_dir, "*.npz")), key=os.path.getmtime)
         new_pos = len(D.load_shard(newest)["winner"])
         steps = max(1, int(np.ceil(new_pos * a.train_ratio / a.batch)))
         L = train_steps(model, opt, scaler, win, steps, a.batch, device, rng, q_mix=a.q_mix)
