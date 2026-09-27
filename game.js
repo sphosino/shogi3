@@ -56,6 +56,7 @@ function kickAI(){
     if(_g!==gameGen||gover) return;
     setTimeout(()=>{
       if(_g!==gameGen||gover) return;
+      if(DIFFICULTY_LEVELS[currentDifficulty].net){ netMove(_g); return; }
       try{
         const mv=aiMove(turn,board,hand,eliminated);
         if(mv){ applyMove(mv,turn); if(showBoard) render(); if(!gover) nextTurn(board); }
@@ -66,6 +67,31 @@ function kickAI(){
       }
     }, thinkDelay);
   },delay);
+}
+
+// 学習したネットに指し手を聞く（python/scripts/play_server.py）。つながらなければ従来のAIで指す
+function netMove(_g){
+  const cfg=DIFFICULTY_LEVELS[currentDifficulty];
+  const req={board, hand, eliminated, turn, moveCount, rule:keepAllPieces, visits:cfg.visits};
+  fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)})
+    .then(r=>r.json())
+    .then(res=>{
+      if(_g!==gameGen||gover) return;
+      if(res.error) throw new Error(res.error);
+      const v=res.value.map(x=>Math.round(x*100));
+      console.log(`学習AI ${PNAME_BASE[turn]}: 勝率予想 青${v[0]}% 赤${v[1]}% 緑${v[2]}%（${res.sec}秒）`, res.top);
+      if(res.move){ applyMove(res.move,turn); render(); }
+      if(!gover) nextTurn(board);
+    })
+    .catch(e=>{
+      console.error('学習AIに接続できません（play_server.py から開いていますか？）:',e);
+      if(_g!==gameGen||gover) return;
+      setStatus('学習AIに接続できないため、中級のAIで指します');
+      const mv=aiMove(turn,board,hand,eliminated);
+      if(mv) applyMove(mv,turn);
+      render();
+      if(!gover) nextTurn(board);
+    });
 }
 
 function setStatus(msg){document.getElementById('info').textContent=msg;}

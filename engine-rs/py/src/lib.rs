@@ -507,6 +507,75 @@ impl Driver {
     }
 }
 
+// ── 1局面の探索（人との対局用。ネットの評価は Python が1つずつ返す）──
+
+#[pyclass(unsendable)]
+pub struct Searcher {
+    search: Search,
+    pending: Option<(Leaf, Vec<Move>)>,
+    visits: u32,
+}
+
+#[pymethods]
+impl Searcher {
+    /// state: 108バイトの局面（encode_state と同じ形）
+    #[new]
+    #[pyo3(signature = (state, visits=800, rule="all", c_puct=1.5, fpu_reduction=0.2))]
+    fn py_new(state: &[u8], visits: u32, rule: &str, c_puct: f32, fpu_reduction: f32) -> PyResult<Searcher> {
+        if state.len() != STATE_BYTES {
+            return Err(PyValueError::new_err("state は108バイト"));
+        }
+        let rule = match rule {
+            "all" => CaptureRule::All,
+            "next" => CaptureRule::Next,
+            "vanish" => CaptureRule::Vanish,
+            _ => return Err(PyValueError::new_err("rule は all/next/vanish")),
+        };
+        let mut board = [0u8; 81];
+        board.copy_from_slice(&state[..81]);
+        let mut hand = [[0u8; 8]; 3];
+        for o in 0..3 {
+            hand[o][..7].copy_from_slice(&state[81 + o * 7..88 + o * 7]);
+        }
+        let elim = [state[102] != 0, state[103] != 0, state[104] != 0];
+        let pos = Position::from_parts(board, hand, elim, state[105], u16::from_le_bytes([state[106], state[107]]), rule);
+        let cfg = SearchConfig { c_puct, fpu_reduction, dirichlet_total: 0.0, dirichlet_weight: 0.0 };
+        Ok(Searcher { search: Search::new(pos, cfg), pending: None, visits })
+    }
+
+    /// 評価が必要な葉を返す（state 108バイト, 合法手の方策番号 i32 bytes）。探索が終わっていれば None
+    fn next_leaf<'py>(&mut self, py: Python<'py>) -> Option<(Bound<'py, PyBytes>, Bound<'py, PyBytes>)> {
+        loop {
+            if self.search.root_visits() >= self.visits {
+                return None;
+            }
+            let leaf = self.search.select();
+            if leaf.terminal.is_some() {
+                self.search.expand(leaf, &[], None);
+                continue;
+            }
+            let moves = self.search.leaf_moves(&leaf);
+            let mut st = Vec::with_capacity(STATE_BYTES);
+            encode_state(self.search.leaf_position(&leaf), &mut st);
+            let legal: Vec<u8> = moves.iter().flat_map(|&m| (if m == PASS { -1 } else { policy_index(m) }).to_le_bytes()).collect();
+            self.pending = Some((leaf, moves));
+            return Some((PyBytes::new_bound(py, &st), PyBytes::new_bound(py, &legal)));
+        }
+    }
+
+    /// next_leaf の葉の評価を返す。priors: f32[合法手数]、value: [3]
+    fn submit(&mut self, priors: Vec<f32>, value: [f32; 3]) -> PyResult<()> {
+        let (leaf, moves) = self.pending.take().ok_or_else(|| PyValueError::new_err("評価待ちの葉がない"))?;
+        self.search.expand(leaf, &moves, Some(EvalOut { priors, value }));
+        Ok(())
+    }
+
+    /// 結果: (最善手, [(手, 訪問数)], 根の価値)。手は to | from<<7 | 成り<<14（パスは 65535）
+    fn result(&self) -> (u16, Vec<(u16, u32)>, [f32; 3]) {
+        (self.search.best_move(), self.search.root_visit_counts(), self.search.root_value())
+    }
+}
+
 /// 定数（Python側と揃える）
 #[pyfunction]
 fn constants(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
@@ -519,6 +588,7 @@ fn constants(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
 #[pymodule]
 fn shogi3_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Driver>()?;
+    m.add_class::<Searcher>()?;
     m.add_function(wrap_pyfunction!(constants, m)?)?;
     Ok(())
 }

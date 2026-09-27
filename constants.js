@@ -16,6 +16,7 @@ const DIFFICULTY_LEVELS = {
   easy:     { label:'初級', depth:3, noise:80,  emoji:'🌿', timeMs:1000 },
   normal:   { label:'中級', depth:4, noise:60,  emoji:'⚔️', timeMs:2000 },
   hard:     { label:'上級', depth:5, noise:20,  emoji:'🔥', timeMs:4000 },
+  net:      { label:'学習AI', depth:4, noise:0, emoji:'🧠', timeMs:2000, net:true, visits:800 }, // python/scripts/play_server.py が必要
 };
 const AI_MAX_DEPTH = 12; // 反復深化の上限深さ（時間切れで実際はこれより浅く終わる）
 let currentDifficulty = 'normal';
