@@ -4,6 +4,7 @@
 //   2. 指す・戻すで盤面・持ち駒・脱落・玉取り/入玉判定が一致し、元に戻るか（取り駒ルール3種）
 //   3. 静的評価が一致するか（三つ巴・共闘、各プレイヤー視点）
 //   4. 枝刈りなしの深さ2探索で最善値が一致するか
+//   5. 王手判定・王手になる打ち手の生成が総当たりと一致するか（新エンジン内の照合）
 'use strict';
 const vm = require('vm');
 const path = require('path');
@@ -92,6 +93,37 @@ for(const rule of ['all', 'next', false]){
         counts.evalv++;
         if(r) fail('eval', `rule=${rule} coll=${coll} ${r}`);
       }
+      // 5. 王手判定（eGivesCheck）と王手になる打ち手の生成（eGenCheckDrops）を総当たりと照合
+      ctx.__tp = tp;
+      const rc = run(`(function(){
+        // 指す前から相手の玉に利いている局面（玉を取れる）は王手判定の対象外
+        eComputeAttacks();
+        for(let e=0;e<3;e++) if(e !== __tp && !E_elim[e] && E_king[e] >= 0 && E_cnt[__tp*81+E_king[e]]) return { n: 0, bad: 0, msg: null };
+        const end = eGenMoves(__tp, 0);
+        const moves = Array.from(E_MV.subarray(0, end));
+        let bad = 0, n = 0, msg = null;
+        const checkDrops = [];
+        for(const m of moves){
+          const pred = eGivesCheck(m, __tp, -1);
+          eMake(m, __tp, 100);
+          eComputeAttacks();
+          let actual = false;
+          for(let e=0;e<3;e++) if(e !== __tp && !E_elim[e] && E_king[e] >= 0 && E_cnt[__tp*81+E_king[e]]) actual = true;
+          eUnmake(m, __tp, 100);
+          n++;
+          if(pred !== actual){ bad++; if(!msg) msg = 'move ' + m + ' pred=' + pred + ' actual=' + actual; }
+          if(actual && ((m >> 7) & 127) >= 81) checkDrops.push(m);
+        }
+        const dEnd = eGenCheckDrops(__tp, 0, -1);
+        const gen = Array.from(E_MV.subarray(0, dEnd)).sort((a,b)=>a-b);
+        checkDrops.sort((a,b)=>a-b);
+        if(gen.length !== checkDrops.length || gen.some((x,i)=>x !== checkDrops[i])){
+          bad++; msg = (msg ? msg + ' / ' : '') + 'checkDrops gen=' + gen.length + ' expected=' + checkDrops.length;
+        }
+        return { n, bad, msg };
+      })()`);
+      counts.check = (counts.check || 0) + rc.n;
+      if(rc.bad) fail('check', `rule=${rule} tp=${tp} ${rc.msg}`);
       // 2. ランダムな手を両方で指す
       ctx.__tp = tp;
       const r = run(`(function(){
@@ -134,7 +166,7 @@ for(const rule of ['all', 'next', false]){
   }
 }
 // 4. 探索（枝刈りなし・深さ2）
-setParams(ctx, { AI_NOISE: 0, AI_TIME_LIMIT_MS: 1e9, AI_MAX_DEPTH: 2, AI_USE_FUTILITY: 0, AI_USE_LMR: 0, AI_USE_SLICE: 0, AI_USE_TT: 1 });
+setParams(ctx, { AI_NOISE: 0, AI_TIME_LIMIT_MS: 1e9, AI_MAX_DEPTH: 2, AI_USE_FUTILITY: 0, AI_USE_LMR: 0, AI_USE_SLICE: 0, AI_USE_TT: 1, AI_CHECK_EXT: 0, AI_QS_PASS: 0 });
 for(let i=0; i<args.search; i++){
   ctx.__p = positions[(i * 53) % positions.length];
   const r = run(`(function(){
@@ -153,6 +185,6 @@ for(let i=0; i<args.search; i++){
   if(!same) fail('search', `pos=${i} old=${JSON.stringify(r.a)} new=${JSON.stringify(r.b)}`);
 }
 
-console.log(JSON.stringify({ checks: { movegen: counts.gen, make: counts.make, eval: counts.evalv, search: counts.search },
+console.log(JSON.stringify({ checks: { movegen: counts.gen, make: counts.make, eval: counts.evalv, check: counts.check, search: counts.search },
   fails, searchSpeedup: counts.newMs ? +(counts.oldMs / counts.newMs).toFixed(2) : null }));
 process.exit(Object.keys(fails).length ? 1 : 0);

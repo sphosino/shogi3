@@ -55,6 +55,15 @@ const E_RAY = new Array(8*81), E_STEP = new Array(48*81), E_SLIDE = new Array(48
   }
 })();
 
+// 逆引き：E_STEP_REV[kind*81+sq] = その駒種がsqに1マス利きを持てる元のマス（王手になる打ち場所の列挙用）
+const E_STEP_REV = new Array(48*81);
+const E_OPP_DIR = [1,0,3,2,7,6,5,4];  // E_DIRS の逆方向
+(function(){
+  const tmp = Array.from({ length: 48*81 }, () => []);
+  for(let k=0;k<48;k++) for(let s=0;s<81;s++){ const st = E_STEP[k*81+s]; for(let i=0;i<st.length;i++) tmp[k*81+st[i]].push(s); }
+  for(let i=0;i<48*81;i++) E_STEP_REV[i] = Int8Array.from(tmp[i]);
+})();
+
 function eInZone(o, sq){ return o===0 ? sq < 27 : o===1 ? sq >= 54 : sq%9 <= 2; }
 function eMustPromote(pt, o, sq){
   if(pt === E_FU || pt === E_KY){ return o===0 ? sq < 9 : o===1 ? sq >= 72 : sq%9 === 0; }
@@ -280,6 +289,121 @@ function eGenMoves(o, base, noDrops){
   return n;
 }
 
+// ── 王手 ──
+// kind の駒が s にいるとき、走り駒として ks に届くか（from は空き、to は駒ありとみなす）
+function eSlideHits(k, s, ks, from, to){
+  const sd = E_SLIDE[k];
+  for(let j=0;j<sd.length;j++){
+    const ray = E_RAY[sd[j]*81+s];
+    for(let i=0;i<ray.length;i++){
+      const t = ray[i];
+      if(t === ks) return true;
+      if(t === to || (t !== from && E_board[t])) break;
+    }
+  }
+  return false;
+}
+
+// 指し手 m（持ち主o、指す前の局面）が生存している相手の玉に王手をかけるか（直接王手＋開き王手）
+// only>=0 なら、その持ち主の玉への王手だけを見る
+function eGivesCheck(m, o, only){
+  const to = m & 127, from = (m >> 7) & 127;
+  const k = from >= 81 ? o*16 + (from - 81) : (E_board[from] - 1) + ((m & 16384) ? 8 : 0);
+  for(let e=0;e<3;e++){
+    if(e === o || E_elim[e]) continue;
+    if(only >= 0 && e !== only) continue;
+    const ks = E_king[e];
+    if(ks < 0 || ks === to) continue;
+    // 直接王手
+    const st = E_STEP[k*81+to];
+    for(let i=0;i<st.length;i++) if(st[i] === ks) return true;
+    if(E_SLIDE[k].length && eSlideHits(k, to, ks, from, to)) return true;
+    // 開き王手：玉 → from の延長線上にある自分の走り駒
+    if(from < 81){
+      const kr = (ks/9)|0, kc = ks%9, fr = (from/9)|0, fc = from%9;
+      const dr = Math.sign(fr - kr), dc = Math.sign(fc - kc);
+      if(!((fr - kr === 0) || (fc - kc === 0) || Math.abs(fr - kr) === Math.abs(fc - kc))) continue;
+      // 玉とfromの間が空いているか（toが間に入れば塞がる）
+      let r = kr + dr, c = kc + dc, clear = true;
+      while(r !== fr || c !== fc){ const t = r*9+c; if(t === to || E_board[t]){ clear = false; break; } r += dr; c += dc; }
+      if(!clear) continue;
+      // fromの先の最初の駒
+      r = fr + dr; c = fc + dc;
+      while(r>=0 && r<9 && c>=0 && c<9){
+        const t = r*9+c;
+        if(t === to) break;
+        const tc = E_board[t];
+        if(tc){
+          const tk = tc - 1;
+          if((tk >> 4) === o && E_SLIDE[tk].length && eSlideHits(tk, t, ks, from, to)) return true;
+          break;
+        }
+        r += dr; c += dc;
+      }
+    }
+  }
+  return false;
+}
+
+// 王手になる打ち手だけを E_MV[n..] に追加（futilityで打ち手を省いた局面用）
+const E_DROPMARK = new Int32Array(81 * 8);
+let E_dropStamp = 0;
+function eGenCheckDrops(o, n, only){
+  E_dropStamp++;
+  let fuLines = -1;
+  for(let pt=0; pt<7; pt++){
+    if(!E_hand[o*8+pt]) continue;
+    const k = o*16 + pt;
+    if(pt === E_FU && fuLines < 0){
+      fuLines = 0;
+      const fuCode = 1 + o*16 + E_FU;
+      for(let sq=0; sq<81; sq++) if(E_board[sq] === fuCode) fuLines |= 1 << (o === 2 ? (sq/9)|0 : sq%9);
+    }
+    for(let e=0;e<3;e++){
+      if(e === o || E_elim[e]) continue;
+      if(only >= 0 && e !== only) continue;
+      const ks = E_king[e]; if(ks < 0) continue;
+      const push = sq => {
+        if(E_board[sq] || E_DROPMARK[sq*8+pt] === E_dropStamp) return;
+        if(pt <= E_KE && eMustPromote(pt, o, sq)) return;
+        if(pt === E_FU && (fuLines & (1 << (o === 2 ? (sq/9)|0 : sq%9)))) return;
+        E_DROPMARK[sq*8+pt] = E_dropStamp;
+        E_MV[n++] = ((81 + pt) << 7) | sq;
+      };
+      const rv = E_STEP_REV[k*81+ks];
+      for(let i=0;i<rv.length;i++) push(rv[i]);
+      const sd = E_SLIDE[k];
+      for(let j=0;j<sd.length;j++){
+        const ray = E_RAY[E_OPP_DIR[sd[j]]*81+ks];
+        for(let i=0;i<ray.length;i++){ const t = ray[i]; if(E_board[t]) break; push(t); }
+      }
+    }
+  }
+  return n;
+}
+
+// 保留中の玉取り：手番の次に指す人 y が誰かの玉に利かせていれば、その玉取りの指し手を返す（なければ0）
+// （eComputeAttacks後に使う）
+function ePendingKingCapture(tp, rootAI){
+  const y = nextAliveOn(E_elim, tp);
+  if(y < 0) return 0;
+  for(let x=0;x<3;x++){
+    if(x === y || E_elim[x]) continue;
+    if(x !== rootAI && y !== rootAI) continue;  // 自分が取る／取られる玉取りだけ見る
+    const ks = E_king[x];
+    if(ks < 0 || !E_cnt[y*81+ks]) continue;
+    // ksに利いている y の駒を探す
+    for(let s=0; s<81; s++){
+      const c = E_board[s]; if(!c) continue;
+      const k = c-1; if((k>>4) !== y) continue;
+      const st = E_STEP[k*81+s];
+      for(let i=0;i<st.length;i++) if(st[i] === ks) return (s << 7) | ks;
+      if(E_SLIDE[k].length && eSlideHits(k, s, ks, -1, -1)) return (s << 7) | ks;
+    }
+  }
+  return 0;
+}
+
 function eHasHand(o){
   for(let pt=0; pt<7; pt++) if(E_hand[o*8+pt]) return true;
   return false;
@@ -496,7 +620,8 @@ function eEnemyAttacks(o, sq){
 // 段階的に並べる：まず「静かでない手」（置換表の手・駒取り・入玉・成り）を前に集めて並べ、
 // 静かな手は後ろに寄せておき、必要になったら eOrderQuiet で点数を付けて並べる（すぐ枝刈りされる局面の無駄を省く）
 // 戻り値: 静かな手の開始位置
-function eOrderTactical(base, end, tp, ttBest){
+// checkOnly: 王手扱いする相手（-1=全員, -2=なし）。自分(root)の手番なら全員への王手、相手の手番なら自分への王手だけ
+function eOrderTactical(base, end, tp, ttBest, checkOnly){
   let w = base;  // 静かな手は一旦 E_QBUF に退避
   let nq = 0;
   for(let i=base;i<end;i++){
@@ -508,6 +633,7 @@ function eOrderTactical(base, end, tp, ttBest){
     else if(!drop && E_board[to]) s = 1e9 + E_VP[(E_board[to]-1)&7] * 16 - E_VP[pt] / 10 + ((m & 16384) ? E_VPRO[pt] : 0);
     else if(pt === E_OU && eIsEntrySq(tp, to)) s = 5e8;
     else if(m & 16384) s = 1e8 + E_VPRO[pt];
+    else if(checkOnly !== -2 && eGivesCheck(m, tp, checkOnly)) s = 3e8;   // 王手は静かな手扱いしない（LMR・futilityの対象外）
     else { E_QBUF[nq++] = m; continue; }
     E_MV[w] = m; E_SC[w] = s; E_QUIET[w] = 0; w++;
   }
@@ -540,7 +666,7 @@ function eOrderQuiet(qs, end, tp, depth){
 
 // root用：全部並べる
 function eOrderMoves(base, end, tp, depth, ttBest){
-  const qs = eOrderTactical(base, end, tp, ttBest);
+  const qs = eOrderTactical(base, end, tp, ttBest, -2);
   eOrderQuiet(qs, end, tp, depth);
   return end;
 }
@@ -585,7 +711,20 @@ function eGenCaptures(o, base){
 
 function eQsearch(tp, alpha, beta, rootAI, qdepth, ply){
   eComputeAttacks();
-  const stand = eEvalCur(rootAI) + tempoBonus(tp, rootAI, E_elim);
+  let stand = eEvalCur(rootAI) + tempoBonus(tp, rootAI, E_elim);
+  if(AI_QS_PASS && qdepth > 0 && tp >= 0 && eAliveCount() === 3){
+    // 次に指す人 y が玉を取れる状態で読みを止めると、その玉取りが見えない。
+    // 手番の人が「何もしない」場合でも y は玉を取れるので、その1手だけ指してみて y にとって良い方を採る
+    const kc = ePendingKingCapture(tp, rootAI);
+    if(kc){
+      const y = nextAliveOn(E_elim, tp);
+      eMake(kc, y, ply);
+      const v = eEvalFresh(rootAI) + tempoBonus(nextAliveOn(E_elim, y), rootAI, E_elim);
+      eUnmake(kc, y, ply);
+      stand = isMinNode(y, rootAI, E_elim) ? Math.min(stand, v) : Math.max(stand, v);
+      eComputeAttacks();
+    }
+  }
   if(qdepth <= 0 || tp < 0 || eAliveCount() <= 1) return stand;
   const isMin = isMinNode(tp, rootAI, E_elim);
   let best = stand;
@@ -645,11 +784,14 @@ function eSearch(depth, alpha, beta, tp, rootAI, ply, maxDepth, t0, timeLimit, s
   }
 
   const base = ply * E_MAXM;
-  const genEnd = eGenMoves(tp, base, futile);
+  let genEnd = eGenMoves(tp, base, futile);
+  // 王手の扱い：自分(root)の手番なら全員への王手、相手の手番なら自分への王手だけを「静かでない手」にする
+  const checkOnly = !AI_CHECK_EXT || cpuCollusion ? -2 : (tp === rootAI ? -1 : rootAI);
+  if(futile && checkOnly !== -2) genEnd = eGenCheckDrops(tp, genEnd, checkOnly);  // 打ち手を省いた局面でも王手の打ちは読む
   moveGenCount++;
   depthMoveGen[depth] = (depthMoveGen[depth]||0) + (genEnd - base);
   depthNodeCount[depth] = (depthNodeCount[depth]||0) + 1;
-  const qStart = eOrderTactical(base, genEnd, tp, ttBest);
+  const qStart = eOrderTactical(base, genEnd, tp, ttBest, checkOnly);
   const nTactical = qStart - base, nAll = genEnd - base;
   // 静かな手：futility時は読まない（値は futileVal とみなす）。それ以外は必要になった時点で並べる
   let end = futile ? qStart : genEnd;

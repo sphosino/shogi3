@@ -56,6 +56,8 @@ const AI_USE_LMR             = 1;     // 後ろの方の静かな手は1手浅�
 const AI_LMR_MIN_DEPTH       = 2;     // LMRを使う最小の残り深さ
 const AI_LMR_MIN_MOVES       = 4;     // この手数を読んだ後の手からLMR対象
 const AI_USE_SLICE           = 1;     // root順位に応じた静かな手の足切り（旧方式）
+const AI_CHECK_EXT           = 0;     // 王手を静かな手扱いしない（LMR・futilityで削らない）※新エンジンのみ
+const AI_QS_PASS             = 0;     // 静止探索で、後の人が玉を取れるときは「何もしない」でも手番を回して読む ※新エンジンのみ
 
 // ── quickMoveScore定数 ──
 const AI_QMS_HAND_COST       = 0.3;   // 持ち駒を打つコスト率（不要な打ちを抑制）
