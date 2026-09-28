@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
 from shogi3ml import data as D  # noqa: E402
 from shogi3ml import model as M  # noqa: E402
-from shogi3ml.train import losses, value_check  # noqa: E402
+from shogi3ml.train import losses, teacher_losses, value_check  # noqa: E402
 from train_loop import evaluate, scaffold_worker, summarize_games  # noqa: E402
 
 
@@ -53,6 +53,8 @@ def parse():
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--from-run", default=None, help="足場の対局を作らず、この実行の自己対局データ（gen*.npz）から学ぶ")
     p.add_argument("--from-gens", default=None, help="--from-run で使う世代の範囲（例 41-51）")
+    p.add_argument("--teacher", default=None, help="先生ネット（例 p4:51）。指定すると勝敗ではなく先生の出力を教師にする")
+    p.add_argument("--v-mix", type=float, default=0.5, help="--teacher のとき、価値の教師に混ぜる MCTS 根の価値の割合")
     p.add_argument("--eval-vs", default=None, help="最後の評価の相手（例 ext:p4:51）。省略時は足場のMCTS")
     return p.parse_args()
 
@@ -128,6 +130,11 @@ def main():
 
     # 3. 学習
     model = M.Net(blocks=a.blocks, ch=a.ch).to(device)
+    teacher = None
+    if a.teacher:
+        run2, g2 = a.teacher.split(":")
+        teacher = M.load(os.path.join(os.path.dirname(__file__), "..", "..", "runs", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
+        log(f"先生ネット {run2} 世代{g2} の出力から蒸留（価値は先生 {1-a.v_mix:.0%} + MCTS根 {a.v_mix:.0%}）")
     opt = torch.optim.SGD(model.parameters(), lr=a.lr, momentum=0.9, weight_decay=a.weight_decay, nesterov=True)
     scaler = torch.amp.GradScaler("cuda")
     total = int(len(tr_idx) * a.epochs / a.batch)
@@ -138,7 +145,8 @@ def main():
     model.train()
     for s in range(total):
         idx = tr_idx[rng.integers(0, len(tr_idx), size=a.batch)]
-        L = losses(model, win.batch(idx, device), a.q_mix)
+        bt = win.batch(idx, device)
+        L = teacher_losses(model, teacher, bt, a.v_mix) if teacher is not None else losses(model, bt, a.q_mix)
         opt.zero_grad(set_to_none=True)
         scaler.scale(L["total"]).backward()
         scaler.step(opt)
@@ -154,7 +162,7 @@ def main():
                 vp = [float(losses(model, win.batch(va_idx[k:k + 1024], device), a.q_mix)["policy"]) for k in range(0, min(len(va_idx), 16384), 1024)]
             vc["policy"] = float(np.mean(vp))
             model.train()
-            log(f"  {s+1}/{total}ステップ {time.time()-t:.0f}秒 学習: policy={m['policy']:.3f} value={m['value']:.3f} value_acc={m['value_acc']*100:.1f}% "
+            log(f"  {s+1}/{total}ステップ {time.time()-t:.0f}秒 学習: policy={m['policy']:.3f} value={m['value']:.3f} value_acc={m['value_acc']*100:.1f}%" + (f" 先生と一致={m['agree']*100:.1f}%" if "agree" in m else "") + " "
                 f"| 検証: 方策 {vc['policy']:.3f} 価値損失 {vc['loss']:.3f} 正解率 {vc['acc']*100:.1f}%（60手未満 {vc['acc_early']*100:.1f}%）")
     model.eval()
     M.save(model, os.path.join(root, "models", "gen0000.pt"))

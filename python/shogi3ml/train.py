@@ -49,6 +49,36 @@ def losses(model, b: dict, q_mix: float = 0.5) -> dict:
     return L
 
 
+def teacher_losses(model, teacher, b: dict, v_mix: float = 0.5) -> dict:
+    """先生ネットの出力を教師にした蒸留（大きいネットへ移すとき）。
+    実際の勝敗は使わないので、対局の結果を丸暗記する過学習が起きない。
+    方策：全力探索の局面は訪問数、それ以外は先生の方策。価値：先生の価値と MCTS 根の価値を v_mix で混ぜる。"""
+    st = b["states"]
+    alive = alive_mask(st)
+    with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16, enabled=st.is_cuda):
+        t = teacher(planes(st), aux=True)
+    with torch.autocast("cuda", dtype=torch.float16, enabled=st.is_cuda):
+        out = model(planes(st), aux=True)
+    soft = lambda x: F.softmax(x.float(), dim=-1)
+    ce = lambda target, logits: -(target * F.log_softmax(logits.float(), dim=-1)).sum(dim=-1).mean()
+    L = {}
+    full = b["policy_w"][:, None]
+    L["policy"] = ce(full * b["policy"] + (1 - full) * soft(t["policy"]), out["policy"])
+    tv = soft(_masked_value_logits(t["value"], alive))
+    vlog = _masked_value_logits(out["value"], alive)
+    L["value"] = ce((1 - v_mix) * tv + v_mix * b["root_value"], vlog)
+    L["rank"] = ce(soft(t["rank"]), out["rank"])
+    L["next_elim"] = ce(soft(t["next_elim"]), out["next_elim"])
+    for k in ("loss20", "final_mat", "remaining"):
+        L[k] = F.huber_loss(out[k].float(), t[k].float())
+    L["st"] = sum(ce(soft(_masked_value_logits(t[k], alive)), _masked_value_logits(out[k], alive)) for k in ("st6", "st16")) / 2
+    L["total"] = sum(WEIGHTS[k] * L[k] for k in WEIGHTS)
+    with torch.no_grad():
+        L["value_acc"] = (vlog.argmax(1) == b["winner"]).float().mean()
+        L["agree"] = (out["policy"].argmax(1) == t["policy"].argmax(1)).float().mean()  # 先生と最善手が一致する割合
+    return L
+
+
 def train_steps(model, opt, scaler, window, steps: int, batch: int, device, rng: np.random.Generator, log=None, q_mix: float = 0.5):
     model.train()
     hist = []
