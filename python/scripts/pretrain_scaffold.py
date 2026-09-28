@@ -5,6 +5,8 @@
 
 使い方（リポジトリ直下）:
   python/.venv/Scripts/python.exe python/scripts/pretrain_scaffold.py --run p4 --games 30000 --epochs 2
+大きいネットへの蒸留（別の実行の自己対局データを使う）:
+  python/.venv/Scripts/python.exe python/scripts/pretrain_scaffold.py --run p5 --blocks 10 --ch 128 --from-run p4 --from-gens 41-51 --eval-vs ext:p4:51
 出力: runs/<run>/selfplay/scaffold_XX.npz（足場の対局）、runs/<run>/models/gen0001.pt（学習済み）
 続けて train_loop.py --run <run> で強化学習を再開できる。
 """
@@ -14,6 +16,7 @@ import json
 import math
 import multiprocessing as mp
 import os
+import shutil
 import sys
 import time
 
@@ -48,6 +51,9 @@ def parse():
     p.add_argument("--eval-games", type=int, default=60)
     p.add_argument("--eval-visits", type=int, default=200)
     p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--from-run", default=None, help="足場の対局を作らず、この実行の自己対局データ（gen*.npz）から学ぶ")
+    p.add_argument("--from-gens", default=None, help="--from-run で使う世代の範囲（例 41-51）")
+    p.add_argument("--eval-vs", default=None, help="最後の評価の相手（例 ext:p4:51）。省略時は足場のMCTS")
     return p.parse_args()
 
 
@@ -70,9 +76,20 @@ def main():
         json.dump(vars(a), f, ensure_ascii=False, indent=1)
     device = torch.device("cuda")
 
-    # 1. 足場の対局を作る（シャードごと。既にあれば続きから）
+    # 1. 学習データ：別の実行の自己対局データを写す（大きいネットへの蒸留）か、足場の対局を作る
+    if a.from_run:
+        lo, hi = (int(x) for x in a.from_gens.split("-"))
+        src = os.path.join(os.path.dirname(__file__), "..", "..", "runs", a.from_run, "selfplay")
+        for g in range(lo, hi + 1):
+            dst = os.path.join(shard_dir, f"gen{g:04d}.npz")
+            if not os.path.exists(dst):
+                shutil.copy2(os.path.join(src, f"gen{g:04d}.npz"), dst)  # 更新時刻も写す（学習ループが新しい順に使う）
+        pattern = "gen*.npz"
+        log(f"{a.from_run} の世代{lo}〜{hi}の自己対局データから学ぶ")
+    else:
+        pattern = "scaffold_*.npz"
     have = len(glob.glob(os.path.join(shard_dir, "scaffold_*.npz")))
-    n_chunks = math.ceil(a.games / a.chunk)
+    n_chunks = 0 if a.from_run else math.ceil(a.games / a.chunk)
     for c in range(have, n_chunks):
         t = time.time()
         games = min(a.chunk, a.games - c * a.chunk)
@@ -91,7 +108,7 @@ def main():
         log(f"足場の対局 {c+1}/{n_chunks}: {time.time()-t:.0f}秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
 
     # 2. 読み込み、対局単位で検証用を分ける
-    files = sorted(glob.glob(os.path.join(shard_dir, "scaffold_*.npz")))
+    files = sorted(glob.glob(os.path.join(shard_dir, pattern)))
     parts = []
     for i, f in enumerate(files):
         d = D.load_shard(f)
@@ -138,10 +155,17 @@ def main():
     M.save(model, os.path.join(root, "models", "gen0000.pt"))
     M.save(model, os.path.join(root, "models", "gen0001.pt"), extra=dict(pretrain=True))
 
-    # 4. 足場のMCTSと対戦
-    r = evaluate({0: model}, ["net:0", f"scaffold:{a.eval_visits}", f"scaffold:{a.eval_visits}"], a.eval_games, a.eval_visits, device, 3)
-    log(f"評価 net vs scaffold:{a.eval_visits}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒")
-    r["gen"] = 1
+    # 4. 評価（足場のMCTS、または別の実行のモデル）
+    if a.eval_vs and a.eval_vs.startswith("ext:"):
+        _, run2, g2 = a.eval_vs.split(":")
+        other = M.load(os.path.join(os.path.dirname(__file__), "..", "..", "runs", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
+        r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 3)
+        name = a.eval_vs
+    else:
+        r = evaluate({0: model}, ["net:0", f"scaffold:{a.eval_visits}", f"scaffold:{a.eval_visits}"], a.eval_games, a.eval_visits, device, 3)
+        name = f"scaffold:{a.eval_visits}"
+    log(f"評価 net vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒")
+    r.update(gen=1, opponent=name)
     with open(os.path.join(root, "eval.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(r, ensure_ascii=False) + chr(10))
 

@@ -48,7 +48,7 @@ def parse():
     p.add_argument("--eval-games", type=int, default=60)
     p.add_argument("--eval-visits", type=int, default=200)
     p.add_argument("--eval-vs", nargs="+", default=["scaffold", "prev"],
-                   help="評価の相手: scaffold（足場のMCTS）/ prev（eval_every世代前）/ gen:N（固定の世代）")
+                   help="評価の相手: scaffold（足場のMCTS）/ prev（eval_every世代前）/ gen:N（固定の世代）/ ext:実行名:N（別の実行のモデル）")
     p.add_argument("--seed", type=int, default=1)
     return p.parse_args()
 
@@ -166,6 +166,11 @@ def main():
                     r = evaluate({0: model}, ["net:0", f"scaffold:{a.eval_visits}", f"scaffold:{a.eval_visits}"],
                                  a.eval_games, a.eval_visits, device, 7 + gen)
                     name = f"scaffold:{a.eval_visits}"
+                elif opp.startswith("ext:"):  # 別の実行のモデル（例 ext:p4:51）
+                    _, run2, g2 = opp.split(":")
+                    other = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
+                    r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen)
+                    name = f"{run2}:gen{int(g2)}"
                 else:
                     og = max(0, gen - a.eval_every) if opp == "prev" else int(opp.split(":")[1])
                     other = M.load(model_path(og), device).eval()
