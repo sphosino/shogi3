@@ -148,9 +148,14 @@ def main():
         if (s + 1) % check_every == 0 or s + 1 == total:
             m = {k: np.mean([h[k] for h in hist[-check_every:]]) for k in hist[-1]}
             vc = value_check(model, val, device)
+            # 検証データでの方策の損失（全力探索の局面だけ。蒸留が足りているかの目安）
+            with torch.no_grad():
+                model.eval()
+                vp = [float(losses(model, win.batch(va_idx[k:k + 1024], device), a.q_mix)["policy"]) for k in range(0, min(len(va_idx), 16384), 1024)]
+            vc["policy"] = float(np.mean(vp))
             model.train()
             log(f"  {s+1}/{total}ステップ {time.time()-t:.0f}秒 学習: policy={m['policy']:.3f} value={m['value']:.3f} value_acc={m['value_acc']*100:.1f}% "
-                f"| 検証: 価値損失 {vc['loss']:.3f} 正解率 {vc['acc']*100:.1f}%（60手未満 {vc['acc_early']*100:.1f}%）")
+                f"| 検証: 方策 {vc['policy']:.3f} 価値損失 {vc['loss']:.3f} 正解率 {vc['acc']*100:.1f}%（60手未満 {vc['acc_early']*100:.1f}%）")
     model.eval()
     M.save(model, os.path.join(root, "models", "gen0000.pt"))
     M.save(model, os.path.join(root, "models", "gen0001.pt"), extra=dict(pretrain=True))

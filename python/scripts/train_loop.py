@@ -39,6 +39,8 @@ def parse():
     p.add_argument("--train-ratio", type=float, default=1.0, help="1世代の学習サンプル数 ÷ 新しく増えた局面数")
     p.add_argument("--batch", type=int, default=256)
     p.add_argument("--lr", type=float, default=0.02)
+    p.add_argument("--lr-warm", type=float, default=None, help="最初の --lr-warm-gens 世代だけ使う低い学習率（蒸留直後のネットを崩さないため）")
+    p.add_argument("--lr-warm-gens", type=int, default=0, help="この実行で低い学習率を使う世代数（世代番号 ≤ 蒸留の世代 + この数）")
     p.add_argument("--window", type=int, default=250_000, help="学習に使う直近の局面数")
     p.add_argument("--blocks", type=int, default=6)
     p.add_argument("--ch", type=int, default=96)
@@ -132,6 +134,10 @@ def main():
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
     for _ in range(a.gens):
+        # 学習率：蒸留直後の数世代は低く（--lr-warm）
+        warm = a.lr_warm is not None and gen < a.lr_warm_gens + 1
+        for g_ in opt.param_groups:
+            g_["lr"] = a.lr_warm if warm else a.lr
         # 学習：ステップ数は、直近のシャード（新しく増えた局面）の数 × train_ratio ÷ バッチ
         t = time.time()
         win = D.Window(shard_dir, a.window)
@@ -141,7 +147,7 @@ def main():
         L = train_steps(model, opt, scaler, win, steps, a.batch, device, rng, q_mix=a.q_mix)
         gen += 1
         M.save(model, model_path(gen), extra=dict(train=L))
-        log(f"世代{gen}: 学習 {steps}ステップ（新規 {new_pos}局面、窓 {win.n}局面/{win.files}シャード）{time.time()-t:.0f}秒 "
+        log(f"世代{gen}: 学習 {steps}ステップ lr={opt.param_groups[0]['lr']}（新規 {new_pos}局面、窓 {win.n}局面/{win.files}シャード）{time.time()-t:.0f}秒 "
             + " ".join(f"{k}={v:.3f}" for k, v in L.items()))
 
         # 自己対局
