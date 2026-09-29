@@ -1,5 +1,7 @@
-﻿# -Always: 学習していなくてもずっとスリープさせない（外出先からリモートでつなぐとき）
-param([switch]$Always)
+﻿# 学習が終わってからも -GraceMinutes 分（既定60分）はスリープさせない。終わった頃に外出先からリモートで次の指示を出せるように。
+# （Windows の自動スリープは「最後に操作してから」数えるので、離席中に学習が終わると、猶予がなければ直後に眠ってしまう）
+# -Always: 学習していなくてもずっとスリープさせない
+param([switch]$Always, [int]$GraceMinutes = 60)
 
 Add-Type @"
 using System;
@@ -86,14 +88,15 @@ while ($true) {
     }
     else {
         $lowSeconds += 10
-        # 60秒ずっと暇なら解除
-        if ($blocking -and $lowSeconds -ge 60) {
+        # 学習が終わってから GraceMinutes 分たったら解除
+        if ($blocking -and $lowSeconds -ge [Math]::Max(60, $GraceMinutes * 60)) {
             [SleepControl]::SetThreadExecutionState([SleepControl]::ES_CONTINUOUS) | Out-Null
             $blocking = $false
         }
     }
 
     $state = if ($blocking) { 'スリープ禁止中' } else { 'スリープ可' }
+    if ($blocking -and -not $busy) { $reason = "学習終了後の猶予 残り$([Math]::Ceiling(($GraceMinutes * 60 - $lowSeconds) / 60))分" }
     Write-Host "$(Get-Date -Format 'HH:mm:ss') GPU: $gpuUsage% $state $reason"
     Start-Sleep -Seconds 10
 }
