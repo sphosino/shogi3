@@ -2,7 +2,7 @@
 
 使い方（リポジトリ直下）:
   python/.venv/Scripts/python.exe python/scripts/eval_models.py --run p4 --gen 11 --vs scaffold:200 gen:1
-相手: scaffold:訪問数 / greedy / random / gen:世代
+相手: scaffold:訪問数 / greedy / random / gen:世代 / ext:実行名:世代（別の実行のモデル）
 """
 import argparse
 import json
@@ -34,6 +34,10 @@ def main():
     for opp in a.vs:
         if opp.startswith("gen:"):
             r = evaluate({0: me, 1: load(int(opp[4:]))}, ["net:0", "net:1", "net:1"], a.games, a.visits, dev, a.seed)
+        elif opp.startswith("ext:"):  # 別の実行のモデル（例 ext:p4:51）
+            _, run2, g2 = opp.split(":")
+            other = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), dev).eval()
+            r = evaluate({0: me, 1: other}, ["net:0", "net:1", "net:1"], a.games, a.visits, dev, a.seed)
         else:
             r = evaluate({0: me}, ["net:0", opp, opp], a.games, a.visits, dev, a.seed)
         r.update(gen=a.gen, opponent=opp)
