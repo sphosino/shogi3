@@ -1,61 +1,102 @@
 # 三人将棋
 
-9×9盤で3人が同時に対局するブラウザ将棋ゲームです。HTMLファイルをブラウザで開くだけで動作します。
+9×9盤で3人が同時に対局する将棋です。2つの部分からなります。
 
-## 起動方法
+1. **ブラウザのゲーム**（`shogi3.html` と JS）：人が遊ぶ画面と、手作りの評価関数で指すCPU。
+2. **自己対局で学習したAI**（`engine-rs/` の Rust と `python/` の PyTorch）：AlphaZero / KataGo 系の方式（MCTS＋ニューラルネット）で、ルールと勝敗だけから学習したAI。手作りのCPUよりずっと強い。ブラウザの難易度「🧠 学習AI」で対戦できる（下記）。
+
+ルールは [RULES.md](RULES.md)、学習AIの設計と結果は [docs/](docs/README.md) を参照。
+
+## 遊び方
+
+### 手作りのCPUと対局する
 
 `shogi3.html` をブラウザで開く（サーバー不要）。
+
+### 学習AIと対局する
+
+学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。
+
+```
+python/.venv/Scripts/python.exe python/scripts/play_server.py --run p5c --gen 25
+```
+
+`http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。1手あたり800回探索する（GPUが空いていれば1手1〜3秒）。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
+
+- `--run` / `--gen` で使うネットを選ぶ（省略すると `--run` の最新の世代）。
+- 取り駒ルール3種すべてで指せる。ルールはネットにも入力として渡す（[docs/ai_architecture.md](docs/ai_architecture.md)）。
+- サーバーにつながらないとき（ファイルを直接開いたときなど）は、中級の手作りCPUが代わりに指す。
 
 ## ファイル構成
 
 ```
-shogi3.html       HTMLレイアウト
-shogi3.css        スタイル
+shogi3.html, shogi3.css   画面
+constants.js              定数・グローバル変数（難易度「学習AI」の設定もここ）
+game.js                   初期化・合法手生成・手の適用・学習AIへの問い合わせ（netMove）
+attack-maps.js            利き筋マップ
+ai.js, engine.js          手作りのCPU（評価関数＋探索）
+render.js, ui.js          描画・操作
 
-constants.js      定数・グローバル変数・基本ユーティリティ
-game.js           ゲーム初期化・合法手生成・手の適用
-attack-maps.js    インクリメンタル利き筋マップ・合法手補助
-ai.js             評価関数・minimax/maxN探索
-render.js         Canvas描画
-ui.js             クリック処理・設定変更・盤面編集モード
-
-tools/selfplay.js Node.jsでのCPU自己対局（パラメータ比較・旧版エンジンとの対戦）
-tools/bench.js    固定局面集を固定深さで読むベンチマーク（速度・評価の安定性）
-tools/measure-search.js  到達深さ・探索木内の同一局面の計測
+engine-rs/                Rust
+  core/                   ルール（盤・指し手生成・終局判定）。JS実装と完全一致を確認済み
+  mcts/                   3人用MCTS、駒価値の足場の評価器
+  py/                     Python から呼ぶモジュール shogi3_rs（自己対局ドライバ・1局面の探索）
+python/
+  shogi3ml/               ネット・入力の作り方・学習データ・損失
+  scripts/                学習ループ・蒸留・評価・分析・対局サーバー
+runs/                     学習の成果物（モデル・自己対局データ・ログ。git管理外）
+docs/                     設計書と結果
+tools/                    JS用の道具（手作りCPUの自己対局・ベンチ・Rust照合用データ作成）
+gpu_sleep_guard.ps1       長時間の学習中にPCがスリープ・省電力にならないようにする
 ```
 
-パラメータ比較の例（候補1席 vs 基準2席、互角なら候補勝率≒33%）:
+## 学習AIの環境構築
+
+- Rust（cargo）、Python 3.12、NVIDIA GPU（RTX 3080 で開発）。
+- Python の仮想環境は `python/.venv`。PyTorch（CUDA版）と maturin を入れる。
+- Rust のモジュールをビルドして仮想環境に入れる：
 
 ```
-node tools/selfplay.js --games 132 --time 2000 --cand '{"AI_DANGER_SCALE":0.4}'
-node tools/selfplay.js --games 132 --time 2000 --baseRef HEAD   # 作業中のエンジン vs コミット済みエンジン
-node tools/bench.js --depth 3 --out a.json                      # 深さ3の読みにかかる時間
+cd engine-rs/py
+VIRTUAL_ENV=../../python/.venv ../../python/.venv/Scripts/maturin.exe develop --release
 ```
 
-`--time` は実際の思考時間より200ms長く指定する（2000 = 中級）。400だと実効0.2秒でほぼ深さ1しか読めず、結論が中級に当てはまらないことがある。
+- 学習中は、読み込まれている `shogi3_rs` を上書きできない。対局サーバーは `engine-rs/target/play/` に置いた別のコピーを優先して読む（`maturin build` した wheel を展開して置く）。
 
-## 主な機能
+## 学習を回す
 
-- **3人同時対局** — 青将（プレイヤー）vs 赤将 CPU vs 緑将 CPU
-- **視点切替** — 任意のプレイヤー視点に切り替えて観戦
-- **難易度4段階** — 入門(0.5秒) / 初級(1秒) / 中級(2秒) / 上級(4秒)
-- **CPU関係設定** — 共闘（CPU2体連合）/ 三つ巴（CPU同士も競争）
-- **取り駒ルール3種** — 常に持ち駒 / お裾分け / 消滅あり
-- **盤面編集モード** — 任意の局面を作ってから対局開始
-- **自己対局モード** — CPU同士の連続対局と勝率集計
-- **棋譜表示** — 全手の棋譜をリアルタイム表示
+リポジトリ直下で実行する。ログは `runs/<実行名>/log.txt`、評価は `eval.jsonl`。
 
-## AI アルゴリズム
+```
+# 今の本線：3つのルールを混ぜて、p5c 世代25から学習（docs/training.md）
+python/.venv/Scripts/python.exe python/scripts/train_loop.py --run pmix --rule mix --init p5c:25 --gens 20 \
+  --games-per-gen 1000 --window 600000 --lr 0.005 --lr-warm 0.002 --lr-warm-gens 3 \
+  --eval-every 5 --eval-games 150 --eval-vs gen:1
+
+# 評価（1体 vs 同じ相手2体、席は毎局入れ替え。互角なら33.3%）
+python/.venv/Scripts/python.exe python/scripts/eval_models.py --run p5c --gen 25 --vs ext:p4:51 gen:1 --games 300
+
+# 自己対局データの分析（席の有利不利・脱落・駒得と勝率）
+python/.venv/Scripts/python.exe python/scripts/analyze_games.py --run p4
+```
+
+離席中に長く回すときは、先に `gpu_sleep_guard.ps1` を起動しておく。Windows が学習プロセスを省電力（Eコア・低クロック）に回して約4倍遅くなるのと、自動スリープで止まるのを防ぐ。
+
+## 手作りのCPU（参考）
+
+学習AIの前に作った、評価関数＋探索のCPU。ブラウザの難易度 入門〜上級 はこちら。
 
 | 項目 | 内容 |
 |---|---|
 | 探索 | 反復深化 minimax（三つ巴時はパラノイド探索。`AI_THREEWAY_SEARCH` で max^N / BRS に切替可）|
-| 静止探索 | 末端で駒取りのみを最大4手延長（損な取りは除外）し水平線効果を抑制 |
+| 静止探索 | 末端で駒取りのみを最大4手延長 |
 | 枝刈り | α-β法 + 置換表 + futility枝刈り + LMR + ランク別スライス |
-| 並べ替え | 置換表の手 → 駒取り(MVV-LVA) → 入玉・成り → キラー → ヒストリー |
-| 置換表 | Zobristハッシュを指し手ごとに差分更新 |
-| 利き筋 | インクリメンタル差分更新（味方の駒がいるマスにも利きを記録。評価関数も利き筋マップを直接利用） |
-| 評価 | 駒価値 + モビリティ + 王安全度 + 入玉距離ボーナス（入玉成立は勝ちとして終局評価） |
-| 三つ巴戦略 | 戦力差に応じた連合係数・止め刺し係数を動的調整 |
+| 評価 | 駒価値 + モビリティ + 王安全度 + 入玉距離ボーナス |
 
-詳細なルールは [RULES.md](RULES.md) を参照してください。
+パラメータ比較（候補1席 vs 基準2席）：
+
+```
+node tools/selfplay.js --games 132 --time 2000 --cand '{"AI_DANGER_SCALE":0.4}'
+```
+
+`--time` は実際の思考時間より200ms長く指定する（2000 = 中級）。
