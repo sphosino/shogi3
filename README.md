@@ -18,7 +18,7 @@
 学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。
 
 ```
-python/.venv/Scripts/python.exe python/scripts/play_server.py --run p5c --gen 25
+python/.venv/Scripts/python.exe python/scripts/play_server.py --run pmix --gen 21
 ```
 
 `http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。1手あたり800回探索する（GPUが空いていれば1手1〜3秒）。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
