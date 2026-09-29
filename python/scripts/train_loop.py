@@ -52,13 +52,16 @@ def parse():
     p.add_argument("--eval-vs", nargs="+", default=["scaffold", "prev"],
                    help="評価の相手: scaffold（足場のMCTS）/ prev（eval_every世代前）/ gen:N（固定の世代）/ ext:実行名:N（別の実行のモデル）")
     p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--rule", default="all", choices=["all", "next", "vanish"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり）")
+    p.add_argument("--init", default=None, help="最初のモデルを別の実行から持ってくる（例 p5c:25）。足場の対局の代わりにこのモデルで自己対局を始める")
     return p.parse_args()
 
 
 def scaffold_worker(args):
-    games, seed, visits_full, visits_fast, full_prob = args
+    games, seed, visits_full, visits_fast, full_prob, *rest = args
+    rule = rest[0] if rest else "all"
     d = shogi3_rs.Driver(parallel=games, total_games=games, seats=["net:0"] * 3, scaffold=True, seed=seed,
-                         visits_full=visits_full, visits_fast=visits_fast, full_prob=full_prob)
+                         visits_full=visits_full, visits_fast=visits_fast, full_prob=full_prob, rule=rule)
     assert d.next_batch() is None  # 足場モードでは推論を求めずに全局終わる
     return d.take_finished()
 
@@ -71,10 +74,10 @@ def summarize_games(d: dict) -> dict:
                 full_positions=int(d["full"].sum()))
 
 
-def evaluate(models: dict, seats, games, visits, device, seed):
+def evaluate(models: dict, seats, games, visits, device, seed, rule="all"):
     """seats[0] が測る側（席は対局ごとに回す）。測る側の勝率を返す"""
     drv = shogi3_rs.Driver(parallel=games, total_games=games, seats=seats, rotate=True, record=False,
-                           full_prob=1.0, visits_full=visits, dirichlet_total=0.0, temp_plies=8, seed=seed)
+                           full_prob=1.0, visits_full=visits, dirichlet_total=0.0, temp_plies=8, seed=seed, rule=rule)
     stats = {}
     d = D.decode(run_driver(drv, models, device, stats))
     rot = d["g_id"] % 3  # 測る側の席 = 対局番号 % 3
@@ -108,13 +111,28 @@ def main():
     shard_dir = os.path.join(root, "selfplay")
     model_path = lambda g: os.path.join(root, "models", f"gen{g:04d}.pt")
 
+    # 別のルール・実行で学習したモデルから始める：それを世代1として保存し、その自己対局を最初のデータにする
+    if a.init and not glob.glob(os.path.join(shard_dir, "*.npz")):
+        run2, g2 = a.init.split(":")
+        init_model = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
+        M.save(init_model, model_path(1), extra=dict(init=a.init))
+        log(f"世代1: {run2} 世代{g2} のモデルから開始（ルール {a.rule}）。最初の自己対局 {a.games_per_gen} 局")
+        t = time.time()
+        drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
+                               visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
+                               seed=a.seed * 100000 + 1, rule=a.rule)
+        stats = {}
+        d = D.decode(run_driver(drv, {0: init_model}, device, stats))
+        D.save_shard(os.path.join(shard_dir, "gen0001.npz"), d)
+        log(f"  自己対局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+
     # 世代0のデータ：足場の評価器（CPUのみ、複数プロセス）
     if not glob.glob(os.path.join(shard_dir, "*.npz")):
         log(f"世代0: 足場の評価器で {a.scaffold_games} 局（{a.scaffold_procs} プロセス）")
         t = time.time()
         per = [a.scaffold_games // a.scaffold_procs + (1 if i < a.scaffold_games % a.scaffold_procs else 0) for i in range(a.scaffold_procs)]
         with mp.Pool(a.scaffold_procs) as pool:
-            parts = pool.map(scaffold_worker, [(n, a.seed * 1000 + i, a.visits_full, a.visits_fast, a.full_prob) for i, n in enumerate(per) if n > 0])
+            parts = pool.map(scaffold_worker, [(n, a.seed * 1000 + i, a.visits_full, a.visits_fast, a.full_prob, a.rule) for i, n in enumerate(per) if n > 0])
         d = D.merge([D.decode(x) for x in parts])
         D.save_shard(os.path.join(shard_dir, "gen0000.npz"), d)
         log(f"  完了 {time.time()-t:.0f}秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
@@ -154,7 +172,7 @@ def main():
         t = time.time()
         drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
                                visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
-                               seed=a.seed * 100000 + gen)
+                               seed=a.seed * 100000 + gen, rule=a.rule)
         stats = {}
         d = D.decode(run_driver(drv, {0: model}, device, stats))
         D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
@@ -170,17 +188,17 @@ def main():
             for opp in a.eval_vs:
                 if opp == "scaffold":
                     r = evaluate({0: model}, ["net:0", f"scaffold:{a.eval_visits}", f"scaffold:{a.eval_visits}"],
-                                 a.eval_games, a.eval_visits, device, 7 + gen)
+                                 a.eval_games, a.eval_visits, device, 7 + gen, a.rule)
                     name = f"scaffold:{a.eval_visits}"
                 elif opp.startswith("ext:"):  # 別の実行のモデル（例 ext:p4:51）
                     _, run2, g2 = opp.split(":")
                     other = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
-                    r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen)
+                    r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen, a.rule)
                     name = f"{run2}:gen{int(g2)}"
                 else:
                     og = max(0, gen - a.eval_every) if opp == "prev" else int(opp.split(":")[1])
                     other = M.load(model_path(og), device).eval()
-                    r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen)
+                    r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen, a.rule)
                     name = f"gen{og}"
                 r.update(gen=gen, opponent=name)
                 log(f"  評価 世代{gen} vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒")
