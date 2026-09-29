@@ -1,5 +1,6 @@
 ﻿# 学習が終わってからも -GraceMinutes 分（既定60分）はスリープさせない。終わった頃に外出先からリモートで次の指示を出せるように。
 # （Windows の自動スリープは「最後に操作してから」数えるので、離席中に学習が終わると、猶予がなければ直後に眠ってしまう）
+# 最後の指示（runs/.keepawake を更新した時刻）からも GraceMinutes 分はスリープさせない（リモートでの会話は Windows の操作に数えられないため）
 # -Always: 学習していなくてもずっとスリープさせない
 param([switch]$Always, [int]$GraceMinutes = 60)
 
@@ -37,6 +38,7 @@ public class SleepControl {
 $watchScripts = 'train_loop.py|pretrain_scaffold.py|eval_models.py|bench_selfplay.py'
 $gpuThreshold = 30   # スクリプト以外で GPU を使っているときの目安（%）
 
+$keepAwake = Join-Path $PSScriptRoot 'runs\.keepawake'
 $lowSeconds = 0
 $blocking = $false
 $tuned = @{}
@@ -88,15 +90,28 @@ while ($true) {
     }
     else {
         $lowSeconds += 10
+        # 最後の指示（runs/.keepawake の更新）から GraceMinutes 分はスリープさせない。
+        # リモートからの指示は Windows の「操作」に数えられないので、Claude が指示を受けるたびにこのファイルを更新する
+        $kaLeft = 0
+        if (Test-Path $keepAwake) {
+            $kaLeft = $GraceMinutes - ((Get-Date) - (Get-Item $keepAwake).LastWriteTime).TotalMinutes
+        }
+        if ($kaLeft -gt 0) {
+            [SleepControl]::SetThreadExecutionState([SleepControl]::ES_CONTINUOUS -bor [SleepControl]::ES_SYSTEM_REQUIRED) | Out-Null
+            $blocking = $true
+        }
         # 学習が終わってから GraceMinutes 分たったら解除
-        if ($blocking -and $lowSeconds -ge [Math]::Max(60, $GraceMinutes * 60)) {
+        elseif ($blocking -and $lowSeconds -ge [Math]::Max(60, $GraceMinutes * 60)) {
             [SleepControl]::SetThreadExecutionState([SleepControl]::ES_CONTINUOUS) | Out-Null
             $blocking = $false
         }
     }
 
     $state = if ($blocking) { 'スリープ禁止中' } else { 'スリープ可' }
-    if ($blocking -and -not $busy) { $reason = "学習終了後の猶予 残り$([Math]::Ceiling(($GraceMinutes * 60 - $lowSeconds) / 60))分" }
+    if ($blocking -and -not $busy) {
+        $left = [Math]::Max([Math]::Ceiling(($GraceMinutes * 60 - $lowSeconds) / 60), [Math]::Ceiling($kaLeft))
+        $reason = "作業終了後・最後の指示からの猶予 残り$($left)分"
+    }
     Write-Host "$(Get-Date -Format 'HH:mm:ss') GPU: $gpuUsage% $state $reason"
     Start-Sleep -Seconds 10
 }
