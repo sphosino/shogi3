@@ -52,9 +52,12 @@ def parse():
     p.add_argument("--eval-vs", nargs="+", default=["scaffold", "prev"],
                    help="評価の相手: scaffold（足場のMCTS）/ prev（eval_every世代前）/ gen:N（固定の世代）/ ext:実行名:N（別の実行のモデル）")
     p.add_argument("--seed", type=int, default=1)
-    p.add_argument("--rule", default="all", choices=["all", "next", "vanish"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり）")
+    p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり / mix=3つを均等に混ぜる）")
     p.add_argument("--init", default=None, help="最初のモデルを別の実行から持ってくる（例 p5c:25）。足場の対局の代わりにこのモデルで自己対局を始める")
     return p.parse_args()
+
+
+RULE_NAMES = ["all", "next", "vanish"]
 
 
 def scaffold_worker(args):
@@ -68,10 +71,19 @@ def scaffold_worker(args):
 
 def summarize_games(d: dict) -> dict:
     kinds = np.bincount(d["g_kind"], minlength=3)
-    return dict(games=int(len(d["g_winner"])), positions=int(len(d["winner"])), avg_plies=float(d["g_plies"].mean()),
-                seat_wins=np.bincount(d["g_winner"], minlength=3).tolist(),
-                end_last=int(kinds[0]), end_entry=int(kinds[1]), end_limit=int(kinds[2]),
-                full_positions=int(d["full"].sum()))
+    out = dict(games=int(len(d["g_winner"])), positions=int(len(d["winner"])), avg_plies=float(d["g_plies"].mean()),
+               seat_wins=np.bincount(d["g_winner"], minlength=3).tolist(),
+               end_last=int(kinds[0]), end_entry=int(kinds[1]), end_limit=int(kinds[2]),
+               full_positions=int(d["full"].sum()))
+    rules = d.get("g_rule")
+    if rules is not None and len(np.unique(rules)) > 1:
+        # ルールごと：[対局数, 平均手数, 最後の1人, 入玉, 500手]
+        for r, name in enumerate(RULE_NAMES):
+            m = rules == r
+            if m.any():
+                k = np.bincount(d["g_kind"][m], minlength=3)
+                out[name] = [int(m.sum()), round(float(d["g_plies"][m].mean()), 1), int(k[0]), int(k[1]), int(k[2])]
+    return out
 
 
 def evaluate(models: dict, seats, games, visits, device, seed, rule="all"):
@@ -86,8 +98,12 @@ def evaluate(models: dict, seats, games, visits, device, seed, rule="all"):
     p = wins / n
     z = (p - 1 / 3) / np.sqrt((1 / 3) * (2 / 3) / n)
     kinds = np.bincount(d["g_kind"], minlength=3)
-    return dict(seats=seats, games=n, wins=wins, rate=round(p * 100, 1), z=round(float(z), 2),
-                avg_plies=float(d["g_plies"].mean()), end=kinds.tolist(), sec=round(stats.get("seconds", 0), 1))
+    out = dict(seats=seats, games=n, wins=wins, rate=round(p * 100, 1), z=round(float(z), 2),
+               avg_plies=float(d["g_plies"].mean()), end=kinds.tolist(), sec=round(stats.get("seconds", 0), 1))
+    if rule == "mix":  # ルールごとの勝率
+        out["by_rule"] = {name: round(float((d["g_winner"][d["g_rule"] == r] == rot[d["g_rule"] == r]).mean() * 100), 1)
+                          for r, name in enumerate(RULE_NAMES) if (d["g_rule"] == r).any()}
+    return out
 
 
 def main():
@@ -201,7 +217,8 @@ def main():
                     r = evaluate({0: model, 1: other}, ["net:0", "net:1", "net:1"], a.eval_games, a.eval_visits, device, 11 + gen, a.rule)
                     name = f"gen{og}"
                 r.update(gen=gen, opponent=name)
-                log(f"  評価 世代{gen} vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒")
+                log(f"  評価 世代{gen} vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒"
+                    + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""))
                 with open(os.path.join(root, "eval.jsonl"), "a", encoding="utf-8") as f:
                     f.write(json.dumps(r, ensure_ascii=False) + chr(10))
     log("終了")

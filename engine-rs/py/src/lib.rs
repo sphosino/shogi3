@@ -3,8 +3,9 @@
 //! 数百局を同時に進め、ネットの評価が必要な葉をまとめて Python に渡す（`next_batch`）。
 //! Python は PyTorch で推論して結果を返す（`submit`）。終局した対局から学習データを作る（`take_finished`）。
 //!
-//! 局面は 108 バイトの小さな形でやり取りする（入力チャンネルへの展開は Python 側）：
-//!   盤 81（駒コード） + 持ち駒 21（持ち主×駒種7） + 脱落 3 + 手番 1 + 手数 2（u16 LE）
+//! 局面は 109 バイトの小さな形でやり取りする（入力チャンネルへの展開は Python 側）：
+//!   盤 81（駒コード） + 持ち駒 21（持ち主×駒種7） + 脱落 3 + 手番 1 + 手数 2（u16 LE） + 取り駒ルール 1（0=all 1=next 2=vanish）
+//! ルールもネットに渡し、1つのネットで3つのルールを学ぶ（KataGo がルールを入力に入れるのと同じ考え方）。
 //! 方策の番号：`(移動元*2 + 成り)*81 + 移動先`（移動元 = 盤上0..80、打ちは 81+駒種）。全 14,256 通り。
 
 use pyo3::exceptions::PyValueError;
@@ -13,7 +14,7 @@ use pyo3::types::{PyBytes, PyDict};
 use shogi3_core::{mv_from, mv_promote, mv_to, CaptureRule, Move, Position, WinKind};
 use shogi3_mcts::{Agent, EvalOut, Evaluator, GreedyAgent, Leaf, MaterialEval, MctsAgent, RandomAgent, Rng, Search, SearchConfig, PASS};
 
-pub const STATE_BYTES: usize = 108;
+pub const STATE_BYTES: usize = 109;
 pub const NUM_POLICY: usize = 88 * 2 * 81;
 
 pub fn policy_index(m: Move) -> i32 {
@@ -30,6 +31,34 @@ fn encode_state(p: &Position, out: &mut Vec<u8>) {
     }
     out.push(p.turn);
     out.extend_from_slice(&p.move_count.to_le_bytes());
+    out.push(rule_id(p.rule));
+}
+
+fn rule_id(r: CaptureRule) -> u8 {
+    match r {
+        CaptureRule::All => 0,
+        CaptureRule::Next => 1,
+        CaptureRule::Vanish => 2,
+    }
+}
+
+fn rule_from_id(i: u8) -> CaptureRule {
+    match i {
+        1 => CaptureRule::Next,
+        2 => CaptureRule::Vanish,
+        _ => CaptureRule::All,
+    }
+}
+
+/// "all" / "next" / "vanish" / "mix"（3つを対局ごとに順に）
+fn parse_rules(rule: &str) -> PyResult<Vec<CaptureRule>> {
+    Ok(match rule {
+        "all" => vec![CaptureRule::All],
+        "next" => vec![CaptureRule::Next],
+        "vanish" => vec![CaptureRule::Vanish],
+        "mix" => vec![CaptureRule::All, CaptureRule::Next, CaptureRule::Vanish],
+        _ => return Err(PyValueError::new_err("rule は all/next/vanish/mix")),
+    })
 }
 
 fn f32_bytes(v: &[f32]) -> Vec<u8> {
@@ -116,7 +145,8 @@ pub struct Driver {
     total_games: u64,
     started: u64,
     seed: u64,
-    rule: CaptureRule,
+    /// 対局ごとのルール（mix なら3つ。対局番号/3 で選ぶ：評価で席を回す 対局番号%3 と独立にするため）
+    rules: Vec<CaptureRule>,
     finished: Vec<Game>,
     /// next_batch で渡した順（submit で使う）
     batch_order: Vec<usize>,
@@ -138,7 +168,7 @@ impl Driver {
         }
         Ok(Game {
             id,
-            pos: Position::initial(self.rule),
+            pos: Position::initial(self.rules[((id / 3) % self.rules.len() as u64) as usize]),
             seats,
             search: None,
             target: 0,
@@ -295,12 +325,7 @@ impl Driver {
         if seats.len() != 3 {
             return Err(PyValueError::new_err("seats は3つ"));
         }
-        let rule = match rule {
-            "all" => CaptureRule::All,
-            "next" => CaptureRule::Next,
-            "vanish" => CaptureRule::Vanish,
-            _ => return Err(PyValueError::new_err("rule は all/next/vanish")),
-        };
+        let rules = parse_rules(rule)?;
         let cfg = Cfg {
             visits_full,
             visits_fast,
@@ -318,7 +343,7 @@ impl Driver {
             total_games,
             started: 0,
             seed,
-            rule,
+            rules,
             finished: Vec::new(),
             batch_order: Vec::new(),
             scaffold_eval: MaterialEval::default(),
@@ -423,6 +448,7 @@ impl Driver {
         let (mut remaining, mut game_id): (Vec<u16>, Vec<u32>) = (Vec::new(), Vec::new());
         // 対局の要約
         let (mut g_id, mut g_winner, mut g_kind, mut g_plies, mut g_seat_net) = (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+        let mut g_rule: Vec<u8> = Vec::new();
         let (mut g_moves_off, mut g_moves): (Vec<i64>, Vec<u16>) = (vec![0], Vec::new());
         for g in &games {
             let (w, kind) = g.outcome.unwrap();
@@ -434,6 +460,7 @@ impl Driver {
                 WinKind::MoveLimit => 2,
             });
             g_plies.push(g.pos.move_count);
+            g_rule.push(rule_id(g.pos.rule));
             for s in &g.seats {
                 g_seat_net.push(match s {
                     Seat::Net(n) => *n as i8,
@@ -500,6 +527,7 @@ impl Driver {
         d.set_item("g_winner", PyBytes::new_bound(py, &g_winner))?;
         d.set_item("g_kind", PyBytes::new_bound(py, &g_kind))?;
         d.set_item("g_plies", PyBytes::new_bound(py, &u16b(&g_plies)))?;
+        d.set_item("g_rule", PyBytes::new_bound(py, &g_rule))?;
         d.set_item("g_seat_net", PyBytes::new_bound(py, &g_seat_net.iter().map(|&x| x as u8).collect::<Vec<u8>>()))?;
         d.set_item("g_moves_offsets", PyBytes::new_bound(py, &i64b(&g_moves_off)))?;
         d.set_item("g_moves", PyBytes::new_bound(py, &u16b(&g_moves)))?;
@@ -518,19 +546,14 @@ pub struct Searcher {
 
 #[pymethods]
 impl Searcher {
-    /// state: 108バイトの局面（encode_state と同じ形）
+    /// state: 109バイトの局面（encode_state と同じ形。最後の1バイトがルール）
     #[new]
-    #[pyo3(signature = (state, visits=800, rule="all", c_puct=1.5, fpu_reduction=0.2))]
-    fn py_new(state: &[u8], visits: u32, rule: &str, c_puct: f32, fpu_reduction: f32) -> PyResult<Searcher> {
+    #[pyo3(signature = (state, visits=800, c_puct=1.5, fpu_reduction=0.2))]
+    fn py_new(state: &[u8], visits: u32, c_puct: f32, fpu_reduction: f32) -> PyResult<Searcher> {
         if state.len() != STATE_BYTES {
-            return Err(PyValueError::new_err("state は108バイト"));
+            return Err(PyValueError::new_err("state は109バイト"));
         }
-        let rule = match rule {
-            "all" => CaptureRule::All,
-            "next" => CaptureRule::Next,
-            "vanish" => CaptureRule::Vanish,
-            _ => return Err(PyValueError::new_err("rule は all/next/vanish")),
-        };
+        let rule = rule_from_id(state[108]);
         let mut board = [0u8; 81];
         board.copy_from_slice(&state[..81]);
         let mut hand = [[0u8; 8]; 3];

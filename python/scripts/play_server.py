@@ -34,8 +34,8 @@ PASS = 65535
 
 
 def encode(req) -> bytes:
-    """ブラウザの局面（board[r][c] = {p,o,pr} / hand[o] = [駒名] …）→ 108バイト"""
-    st = bytearray(108)
+    """ブラウザの局面（board[r][c] = {p,o,pr} / hand[o] = [駒名] …）→ 109バイト（最後はルール）"""
+    st = bytearray(109)
     for r in range(9):
         for c in range(9):
             cell = req["board"][r][c]
@@ -48,7 +48,16 @@ def encode(req) -> bytes:
         st[102 + o] = 1 if req["eliminated"][o] else 0
     st[105] = req["turn"]
     st[106:108] = int(req["moveCount"]).to_bytes(2, "little")
+    st[108] = RULE_ID[rule_name(req.get("rule", "all"))]
     return bytes(st)
+
+
+RULE_ID = {"all": 0, "next": 1, "vanish": 2}
+
+
+def rule_name(v):
+    """ブラウザの keepAllPieces（true / 'all' / 'next' / false）→ ルール名"""
+    return {True: "all", "all": "all", "next": "next", False: "vanish", "vanish": "vanish"}.get(v, "all")
 
 
 def decode_move(m: int, board):
@@ -67,8 +76,7 @@ class Engine:
 
     def think(self, req):
         visits = max(1, min(int(req.get("visits", 800)), 20000))
-        rule = {True: "all", "all": "all", "next": "next", False: "vanish", "vanish": "vanish"}.get(req.get("rule", "all"), "all")
-        s = shogi3_rs.Searcher(encode(req), visits=visits, rule=rule)
+        s = shogi3_rs.Searcher(encode(req), visits=visits)
         t = time.time()
         with self.lock:
             while True:
@@ -76,7 +84,7 @@ class Engine:
                 if leaf is None:
                     break
                 st_b, legal_b = leaf
-                st = torch.from_numpy(np.frombuffer(st_b, dtype=np.uint8).copy()).view(1, 108).to(self.device)
+                st = torch.from_numpy(np.frombuffer(st_b, dtype=np.uint8).copy()).view(1, 109).to(self.device)
                 legal = torch.from_numpy(np.frombuffer(legal_b, dtype=np.int32).astype(np.int64)).view(1, -1).to(self.device)
                 p, v = evaluate_batch(self.model, st, legal)
                 s.submit(p[0].cpu().tolist(), v[0].cpu().tolist())

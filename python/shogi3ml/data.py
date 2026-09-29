@@ -1,7 +1,7 @@
 """学習データのシャード（1回の自己対局の出力）の保存・読み込みと、バッチの作成。
 
 シャードは npz。1局面1行（docs/self_play.md の学習データ）：
-  states [N,108] u8 / policy_offsets [N+1] i64 / policy_index [M] i32 / policy_visits [M] u32 / full [N] u8
+  states [N,109] u8（古いシャードは108。読み込み時にルール=全部持ち駒の列を足す） / policy_offsets [N+1] i64 / policy_index [M] i32 / policy_visits [M] u32 / full [N] u8
   winner [N] u8 / rank [N,3] u8 / next_elim [N] u8 / root_value [N,3] / loss20 [N,3] / final_material [N,3]
   st6 [N,3] / st16 [N,3] / remaining [N] u16 / game_id [N] u32
 対局の要約（g_*）も同じファイルに入れる（分析用）。
@@ -34,6 +34,7 @@ _DTYPES = {
     "g_winner": (np.uint8, (-1,)),
     "g_kind": (np.uint8, (-1,)),
     "g_plies": (np.uint16, (-1,)),
+    "g_rule": (np.uint8, (-1,)),
     "g_seat_net": (np.int8, (-1, 3)),
     "g_moves_offsets": (np.int64, (-1,)),
     "g_moves": (np.uint16, (-1,)),
@@ -69,7 +70,13 @@ def save_shard(path: str, data: dict):
 
 def load_shard(path: str) -> dict:
     with np.load(path) as z:
-        return {k: z[k] for k in z.files}
+        d = {k: z[k] for k in z.files}
+    # ルールを持たない古いデータ（108バイト・g_rule なし）は「全部持ち駒」
+    if d["states"].shape[1] == STATE_BYTES - 1:
+        d["states"] = np.concatenate([d["states"], np.zeros((len(d["states"]), 1), dtype=np.uint8)], axis=1)
+    if "g_rule" not in d:
+        d["g_rule"] = np.zeros(len(d["g_winner"]), dtype=np.uint8)
+    return d
 
 
 class Window:

@@ -26,7 +26,7 @@ def main():
     p.add_argument("--games", type=int, default=60)
     p.add_argument("--visits", type=int, default=200)
     p.add_argument("--seed", type=int, default=101)
-    p.add_argument("--rule", default="all", choices=["all", "next", "vanish"])
+    p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"])
     a = p.parse_args()
     root = os.path.join(os.path.dirname(__file__), "..", "..", "runs", a.run)
     dev = torch.device("cuda")
@@ -42,7 +42,7 @@ def main():
         else:
             r = evaluate({0: me}, ["net:0", opp, opp], a.games, a.visits, dev, a.seed, a.rule)
         r.update(gen=a.gen, opponent=opp, rule=a.rule)
-        print(f"世代{a.gen} vs {opp}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 終局{r['end']} {r['sec']}秒", flush=True)
+        print(f"世代{a.gen} vs {opp}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 終局{r['end']} {r['sec']}秒" + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""), flush=True)
         with open(os.path.join(root, "eval_extra.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(r, ensure_ascii=False) + chr(10))
 

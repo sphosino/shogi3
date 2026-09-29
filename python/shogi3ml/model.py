@@ -105,5 +105,10 @@ def save(model: Net, path, extra=None):
 def load(path, device="cpu") -> Net:
     ck = torch.load(path, map_location=device, weights_only=False)
     m = Net(**ck["config"])
-    m.load_state_dict(ck["state"])
+    st = ck["state"]
+    # 入力チャンネルが少ない古いモデル（ルールの入力がない76チャンネル）：足りない分の重みを0で足す。出力は元と同じになる
+    w = st["stem.0.weight"]
+    if w.shape[1] < IN_CHANNELS:
+        st["stem.0.weight"] = torch.cat([w, w.new_zeros(w.shape[0], IN_CHANNELS - w.shape[1], *w.shape[2:])], dim=1)
+    m.load_state_dict(st)
     return m.to(device)
