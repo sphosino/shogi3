@@ -1,4 +1,7 @@
-﻿Add-Type @"
+﻿# -Always: 学習していなくてもずっとスリープさせない（外出先からリモートでつなぐとき）
+param([switch]$Always)
+
+Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 
@@ -68,6 +71,11 @@ while ($true) {
     }
     catch {
         $gpuUsage = -1
+    }
+
+    if ($Always -and -not $busy) {
+        $busy = $true
+        $reason = '常に禁止（-Always）'
     }
 
     if ($busy) {
