@@ -86,12 +86,14 @@ def summarize_games(d: dict) -> dict:
     return out
 
 
-def evaluate(models: dict, seats, games, visits, device, seed, rule="all"):
-    """seats[0] が測る側（席は対局ごとに回す）。測る側の勝率を返す"""
-    drv = shogi3_rs.Driver(parallel=games, total_games=games, seats=seats, rotate=True, record=False,
+def evaluate(models: dict, seats, games, visits, device, seed, rule="all", save=None):
+    """seats[0] が測る側（席は対局ごとに回す）。測る側の勝率を返す。save を指定すると対局データ（局面つき）を保存する"""
+    drv = shogi3_rs.Driver(parallel=games, total_games=games, seats=seats, rotate=True, record=save is not None,
                            full_prob=1.0, visits_full=visits, dirichlet_total=0.0, temp_plies=8, seed=seed, rule=rule)
     stats = {}
     d = D.decode(run_driver(drv, models, device, stats))
+    if save is not None:
+        D.save_shard(save, d)
     rot = d["g_id"] % 3  # 測る側の席 = 対局番号 % 3
     wins = int((d["g_winner"] == rot).sum())
     n = len(rot)
@@ -100,6 +102,8 @@ def evaluate(models: dict, seats, games, visits, device, seed, rule="all"):
     kinds = np.bincount(d["g_kind"], minlength=3)
     out = dict(seats=seats, games=n, wins=wins, rate=round(p * 100, 1), z=round(float(z), 2),
                avg_plies=float(d["g_plies"].mean()), end=kinds.tolist(), sec=round(stats.get("seconds", 0), 1))
+    # 測る側がその席に座ったときの勝率（青=P0, 赤=P1, 緑=P2）
+    out["by_seat"] = [round(float((d["g_winner"][rot == s] == s).mean() * 100), 1) for s in range(3)]
     if rule == "mix":  # ルールごとの勝率
         out["by_rule"] = {name: round(float((d["g_winner"][d["g_rule"] == r] == rot[d["g_rule"] == r]).mean() * 100), 1)
                           for r, name in enumerate(RULE_NAMES) if (d["g_rule"] == r).any()}
