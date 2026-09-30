@@ -53,6 +53,10 @@ def parse():
                    help="評価の相手: scaffold（足場のMCTS）/ prev（eval_every世代前）/ gen:N（固定の世代）/ ext:実行名:N（別の実行のモデル）")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり / mix=3つを均等に混ぜる）")
+    p.add_argument("--past-prob", type=float, default=0.0, help="自己対局のうち過去の世代を混ぜる対局の割合（半分は 現世代2+過去1、半分は 現世代1+過去2）")
+    p.add_argument("--past-start", type=int, default=21, help="過去の世代の候補：この世代から")
+    p.add_argument("--past-every", type=int, default=10, help="過去の世代の候補：この間隔ごと")
+    p.add_argument("--past-max", type=int, default=6, help="過去の世代の候補の最大数（新しい方から）")
     p.add_argument("--init", default=None, help="最初のモデルを別の実行から持ってくる（例 p5c:25）。足場の対局の代わりにこのモデルで自己対局を始める")
     return p.parse_args()
 
@@ -67,6 +71,19 @@ def scaffold_worker(args):
                          visits_full=visits_full, visits_fast=visits_fast, full_prob=full_prob, rule=rule)
     assert d.next_batch() is None  # 足場モードでは推論を求めずに全局終わる
     return d.take_finished()
+
+
+def past_summary(d: dict) -> str:
+    """過去の世代を混ぜた対局での、現世代の勝率（1体のとき・2体のとき）"""
+    sn = d["g_seat_net"].astype(np.int64)  # 対局×3席のネット番号（0=現世代）
+    n0 = (sn == 0).sum(1)
+    won = sn[np.arange(len(sn)), d["g_winner"].astype(np.int64)] == 0
+    parts = []
+    for k, name in ((2, "現世代2体"), (1, "現世代1体")):
+        m = n0 == k
+        if m.any():
+            parts.append(f"{name} {int(m.sum())}局 現世代の勝率 {won[m].mean()*100:.1f}%（互角なら{k/3*100:.0f}%）")
+    return " / ".join(parts)
 
 
 def summarize_games(d: dict) -> dict:
@@ -171,6 +188,7 @@ def main():
     opt = torch.optim.SGD(model.parameters(), lr=a.lr, momentum=0.9, weight_decay=a.weight_decay, nesterov=True)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
 
+    past_cache = {}
     for _ in range(a.gens):
         # 学習率：蒸留直後の数世代は低く（--lr-warm）
         warm = a.lr_warm is not None and gen < a.lr_warm_gens + 1
@@ -188,13 +206,23 @@ def main():
         log(f"世代{gen}: 学習 {steps}ステップ lr={opt.param_groups[0]['lr']}（新規 {new_pos}局面、窓 {win.n}局面/{win.files}シャード）{time.time()-t:.0f}秒 "
             + " ".join(f"{k}={v:.3f}" for k, v in L.items()))
 
-        # 自己対局
+        # 自己対局（--past-prob > 0 なら、一部の対局に過去の世代を混ぜる。学習データは現世代の手番だけ）
         t = time.time()
+        models, alt = {0: model}, []
+        if a.past_prob > 0:
+            pool = [g for g in range(a.past_start, gen, a.past_every) if os.path.exists(model_path(g))][-a.past_max:]
+            for i, g in enumerate(pool):
+                if g not in past_cache:
+                    past_cache[g] = M.load(model_path(g), device).eval()
+                models[i + 1] = past_cache[g]
+                alt += [["net:0", "net:0", f"net:{i + 1}"], ["net:0", f"net:{i + 1}", f"net:{i + 1}"]]
         drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
                                visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
-                               seed=a.seed * 100000 + gen, rule=a.rule)
+                               seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=a.past_prob if alt else 0.0)
         stats = {}
-        d = D.decode(run_driver(drv, {0: model}, device, stats))
+        d = D.decode(run_driver(drv, models, device, stats))
+        if alt:
+            log(f"  過去の世代 {pool} を混ぜた対局: {past_summary(d)}")
         D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
         log(f"  自己対局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
         # 過学習の監視：まだ学習に使っていない、今の自己対局のデータで価値を測る
@@ -222,7 +250,7 @@ def main():
                     name = f"gen{og}"
                 r.update(gen=gen, opponent=name)
                 log(f"  評価 世代{gen} vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒"
-                    + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""))
+                    + f" 席別(青赤緑) {r['by_seat']}" + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""))
                 with open(os.path.join(root, "eval.jsonl"), "a", encoding="utf-8") as f:
                     f.write(json.dumps(r, ensure_ascii=False) + chr(10))
     log("終了")

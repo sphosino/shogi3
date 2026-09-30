@@ -141,6 +141,9 @@ pub struct Driver {
     cfg: Cfg,
     seat_specs: Vec<String>,
     rotate: bool,
+    /// 過去の世代を混ぜる対局（alt_prob の確率で、この中から1つを選び、席をランダムに回す）
+    alt_seats: Vec<Vec<String>>,
+    alt_prob: f64,
     record: bool,
     total_games: u64,
     started: u64,
@@ -159,11 +162,17 @@ impl Driver {
         let id = self.started;
         self.started += 1;
         let seed = self.seed.wrapping_mul(1_000_003).wrapping_add(id);
-        let rot = if self.rotate { (id % 3) as usize } else { 0 };
+        let mut pick = Rng::new(seed ^ 0x5EED_A17);
+        let (specs, rot) = if !self.alt_seats.is_empty() && pick.unit() < self.alt_prob {
+            let k = ((pick.unit() * self.alt_seats.len() as f64) as usize).min(self.alt_seats.len() - 1);
+            (&self.alt_seats[k], ((pick.unit() * 3.0) as usize).min(2))
+        } else {
+            (&self.seat_specs, if self.rotate { (id % 3) as usize } else { 0 })
+        };
         let mut seats = Vec::with_capacity(3);
         for s in 0..3 {
-            // rotate: 基本の並び [A,B,C] を対局ごとにずらす（測る側の席を入れ替える）
-            let spec = &self.seat_specs[(s + 3 - rot) % 3];
+            // 基本の並び [A,B,C] を対局ごとにずらす（評価：測る側の席を入れ替える／過去の世代を混ぜる対局：席をランダムに）
+            let spec = &specs[(s + 3 - rot) % 3];
             seats.push(make_seat(spec, seed * 3 + s as u64)?);
         }
         Ok(Game {
@@ -234,7 +243,9 @@ impl Driver {
     fn finish_move(g: &mut Game, cfg: &Cfg) {
         let s = g.search.take().unwrap();
         let mv = if g.pos.move_count < cfg.temp_plies { s.sample_move(1.0, &mut g.rng) } else { s.best_move() };
-        if g.record && mv != PASS {
+        // 学習データは現世代（ネット0番）の手番だけ残す（過去の世代の手を方策の手本にしない）
+        let mine = matches!(g.seats[g.pos.turn as usize], Seat::Net(0));
+        if g.record && mv != PASS && mine {
             let mut state = Vec::with_capacity(STATE_BYTES);
             encode_state(&g.pos, &mut state);
             let policy = g.full.then(|| {
@@ -302,7 +313,8 @@ impl Driver {
     /// seats: 3つの席の種類（"net:0" / "net:1" / "scaffold:訪問数" / "greedy" / "random"）。rotate=True で対局ごとに席をずらす
     #[new]
     #[pyo3(signature = (parallel, total_games, seats, rotate=false, record=true, visits_full=600, visits_fast=100, full_prob=0.25,
-                        temp_plies=30, c_puct=1.5, fpu_reduction=0.2, dirichlet_total=10.0, dirichlet_weight=0.25, scaffold=false, seed=1, rule="all"))]
+                        temp_plies=30, c_puct=1.5, fpu_reduction=0.2, dirichlet_total=10.0, dirichlet_weight=0.25, scaffold=false, seed=1, rule="all",
+                        alt_seats=Vec::new(), alt_prob=0.0))]
     #[allow(clippy::too_many_arguments)]
     fn py_new(
         parallel: usize,
@@ -321,9 +333,14 @@ impl Driver {
         scaffold: bool,
         seed: u64,
         rule: &str,
+        alt_seats: Vec<Vec<String>>,
+        alt_prob: f64,
     ) -> PyResult<Driver> {
         if seats.len() != 3 {
             return Err(PyValueError::new_err("seats は3つ"));
+        }
+        if alt_seats.iter().any(|a| a.len() != 3) {
+            return Err(PyValueError::new_err("alt_seats の各要素は3つ"));
         }
         let rules = parse_rules(rule)?;
         let cfg = Cfg {
@@ -339,6 +356,8 @@ impl Driver {
             cfg,
             seat_specs: seats,
             rotate,
+            alt_seats,
+            alt_prob,
             record,
             total_games,
             started: 0,
