@@ -243,6 +243,22 @@ impl Search {
             .collect()
     }
 
+    /// 根の各手の訪問数と、その手の後の価値（3つ組の平均。未訪問なら None）
+    pub fn root_children(&self) -> Vec<(Move, u32, Option<[f32; 3]>)> {
+        let (s, l) = (self.nodes[0].edges_start as usize, self.nodes[0].edges_len as usize);
+        (s..s + l)
+            .map(|i| {
+                let e = &self.edges[i];
+                if e.child == NONE {
+                    return (e.mv, 0, None);
+                }
+                let c = &self.nodes[e.child as usize];
+                let d = c.n.max(1) as f32;
+                (e.mv, c.n, Some([c.w[0] / d, c.w[1] / d, c.w[2] / d]))
+            })
+            .collect()
+    }
+
     /// 根の価値（3つ組の平均）
     pub fn root_value(&self) -> [f32; 3] {
         let n = &self.nodes[0];

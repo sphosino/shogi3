@@ -612,6 +612,11 @@ impl Searcher {
         Ok(())
     }
 
+    /// 根の各手：[(方策番号, 訪問数, その手の後の価値 or None)]（分析用）
+    fn children(&self) -> Vec<(i32, u32, Option<[f32; 3]>)> {
+        self.search.root_children().into_iter().map(|(m, n, v)| (if m == PASS { -1 } else { policy_index(m) }, n, v)).collect()
+    }
+
     /// 結果: (最善手, [(手, 訪問数)], 根の価値)。手は to | from<<7 | 成り<<14（パスは 65535）
     fn result(&self) -> (u16, Vec<(u16, u32)>, [f32; 3]) {
         (self.search.best_move(), self.search.root_visit_counts(), self.search.root_value())
