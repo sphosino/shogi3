@@ -11,7 +11,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use shogi3_core::{mv_from, mv_promote, mv_to, CaptureRule, Move, Position, WinKind};
+use shogi3_core::{make_drop, make_move, mv_from, mv_promote, mv_to, CaptureRule, Move, Position, WinKind};
 use shogi3_mcts::{Agent, EvalOut, Evaluator, GreedyAgent, Leaf, MaterialEval, MctsAgent, RandomAgent, Rng, Search, SearchConfig, PASS};
 
 pub const STATE_BYTES: usize = 109;
@@ -618,6 +618,48 @@ impl Searcher {
     }
 }
 
+// ── 分析用（局面1つを調べる）──
+
+fn position_from_state(state: &[u8]) -> PyResult<Position> {
+    if state.len() != STATE_BYTES {
+        return Err(PyValueError::new_err("state は109バイト"));
+    }
+    let mut board = [0u8; 81];
+    board.copy_from_slice(&state[..81]);
+    let mut hand = [[0u8; 8]; 3];
+    for o in 0..3 {
+        hand[o][..7].copy_from_slice(&state[81 + o * 7..88 + o * 7]);
+    }
+    let elim = [state[102] != 0, state[103] != 0, state[104] != 0];
+    Ok(Position::from_parts(board, hand, elim, state[105], u16::from_le_bytes([state[106], state[107]]), rule_from_id(state[108])))
+}
+
+/// 各人の玉に、生存している相手の駒が利いているか（脱落者・玉なしは false）
+#[pyfunction]
+fn king_threats(state: &[u8]) -> PyResult<[bool; 3]> {
+    let p = position_from_state(state)?;
+    let mut out = [false; 3];
+    for o in 0..3 {
+        if !p.elim[o] && p.king[o] >= 0 {
+            out[o] = p.attacked_by_enemy(p.king[o] as usize, o as u8);
+        }
+    }
+    Ok(out)
+}
+
+/// 方策の番号の手を指した後の局面（109バイト）
+#[pyfunction]
+fn apply_policy_index<'py>(py: Python<'py>, state: &[u8], idx: i32) -> PyResult<Bound<'py, PyBytes>> {
+    let mut p = position_from_state(state)?;
+    let (to, rest) = ((idx % 81) as usize, (idx / 81) as usize);
+    let (from, pro) = (rest / 2, rest % 2 == 1);
+    let m = if from >= 81 { make_drop((from - 81) as u8, to) } else { make_move(from, to, pro) };
+    p.play(m);
+    let mut out = Vec::with_capacity(STATE_BYTES);
+    encode_state(&p, &mut out);
+    Ok(PyBytes::new_bound(py, &out))
+}
+
 /// 定数（Python側と揃える）
 #[pyfunction]
 fn constants(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
@@ -632,5 +674,7 @@ fn shogi3_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Driver>()?;
     m.add_class::<Searcher>()?;
     m.add_function(wrap_pyfunction!(constants, m)?)?;
+    m.add_function(wrap_pyfunction!(king_threats, m)?)?;
+    m.add_function(wrap_pyfunction!(apply_policy_index, m)?)?;
     Ok(())
 }
