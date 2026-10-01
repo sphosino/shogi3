@@ -57,6 +57,7 @@ def parse():
     p.add_argument("--past-start", type=int, default=21, help="過去の世代の候補：この世代から")
     p.add_argument("--past-every", type=int, default=10, help="過去の世代の候補：この間隔ごと")
     p.add_argument("--past-max", type=int, default=6, help="過去の世代の候補の最大数（新しい方から）")
+    p.add_argument("--past-per-gen", type=int, default=1, help="1世代で使う過去の世代の数（候補から順番に選ぶ）。モデルが増えると推論が分かれて遅くなる")
     p.add_argument("--init", default=None, help="最初のモデルを別の実行から持ってくる（例 p5c:25）。足場の対局の代わりにこのモデルで自己対局を始める")
     return p.parse_args()
 
@@ -210,7 +211,8 @@ def main():
         t = time.time()
         models, alt = {0: model}, []
         if a.past_prob > 0:
-            pool = [g for g in range(a.past_start, gen, a.past_every) if os.path.exists(model_path(g))][-a.past_max:]
+            cands = [g for g in range(a.past_start, gen, a.past_every) if os.path.exists(model_path(g))][-a.past_max:]
+            pool = [cands[(gen * a.past_per_gen + j) % len(cands)] for j in range(min(a.past_per_gen, len(cands)))] if cands else []
             for i, g in enumerate(pool):
                 if g not in past_cache:
                     past_cache[g] = M.load(model_path(g), device).eval()
