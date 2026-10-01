@@ -35,7 +35,7 @@ public class SleepControl {
 
 # 学習・評価・対局サーバーなど、動いている間はスリープさせないスクリプト
 # （自己対局中の GPU 使用率は 55〜60% ほどなので、使用率だけでは判定しない）
-$watchScripts = 'train_loop.py|pretrain_scaffold.py|eval_models.py|bench_selfplay.py'
+$watchScripts = 'train_loop.py|pretrain_scaffold.py|eval_models.py|bench_selfplay.py|deep_check_skip.py|probe_rules.py'
 $gpuThreshold = 30   # スクリプト以外で GPU を使っているときの目安（%）
 
 $keepAwake = Join-Path $PSScriptRoot 'runs\.keepawake'
