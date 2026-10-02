@@ -9,7 +9,7 @@ from .features import STATE_BYTES, alive_mask, planes
 
 @torch.inference_mode()
 def evaluate_batch(model, states_u8: torch.Tensor, legal: torch.Tensor):
-    """states_u8 [B,108] uint8、legal [B,L] int64（-1 は無し）→ priors [B,L] float32, values [B,3] float32"""
+    """states_u8 [B,109] uint8、legal [B,L] int64（-1 は無し）→ priors [B,L] float32, values [B,3] float32"""
     with torch.autocast("cuda", dtype=torch.float16, enabled=states_u8.is_cuda):
         out = model(planes(states_u8), aux=False)
     logits = out["policy"].float()
@@ -20,6 +20,10 @@ def evaluate_batch(model, states_u8: torch.Tensor, legal: torch.Tensor):
     priors = torch.nan_to_num(priors, nan=0.0)  # 合法手なし（パスのみ）の行
     v = out["value"].float().masked_fill(~alive_mask(states_u8), float("-inf"))
     values = torch.softmax(v, dim=1)
+    # 価値の作り替え（分析用：特定の相手を狙うように偏らせたプレイヤーなど）。モデルに value_transform があれば使う
+    vt = getattr(model, "value_transform", None)
+    if vt is not None:
+        values = vt(values, states_u8)
     return priors, values
 
 
