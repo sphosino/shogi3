@@ -269,6 +269,34 @@ function nextTurn(bd) {
   }
 }
 
+// ── 投了（人間）──
+// 投了した人は脱落扱いにする。玉は盤から取り除き、残りの駒は盤に残る（玉を取られて脱落したときと同じく、動かず利きもない）
+function resignHuman(){
+  if(gover || selfPlayMode || editMode || eliminated[humanPlayer]) return;
+  if(!confirm('投了しますか？（脱落扱いになり、残りの2人の対局を観戦します）')) return;
+  const p = humanPlayer;
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++){
+    const x = board[r][c];
+    if(x && x.o===p && x.p==='OU') board[r][c] = null;
+  }
+  eliminated[p] = true;
+  humanEliminated = true;
+  kifu.push({fugo:'投了', col:PCOL[p], name:PNAME_BASE[p]});
+  renderKifu();
+  buildAttackMaps(board);
+  const alive = [0,1,2].filter(i=>!eliminated[i]);
+  if(alive.length <= 1){
+    gover = true; winner = alive[0];
+    setStatus('投了しました。'+pName(winner)+'の勝ち');
+    render();
+    return;
+  }
+  setStatus('投了しました。残りの2人の対局を続けます');
+  render();
+  // 自分の手番なら次へ。CPUが考え中なら、その手のあと自動で次へ進む（脱落者は飛ばされる）
+  if(turn === p) nextTurn(board);
+}
+
 // ── クリック ──
 function handleClick(e){
   const rect=canvas.getBoundingClientRect();
