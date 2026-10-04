@@ -15,10 +15,11 @@
 
 ### 学習AIと対局する
 
-学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。
+学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（現時点の最強は `shogi3-pbig2-gen61.pt`）。
 
 ```
-python/.venv/Scripts/python.exe python/scripts/play_server.py --run pmix --gen 121
+python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen61.pt   # ダウンロードした重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 61           # 自分で学習した runs/ の重み
 ```
 
 `http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。1手あたり800回探索する（GPUが空いていれば1手1〜3秒）。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
