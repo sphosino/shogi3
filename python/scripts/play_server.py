@@ -4,9 +4,10 @@
 ブラウザの難易度で「学習AI」を選ぶと、CPU の手番でここに局面を送る。
 
 使い方（リポジトリ直下）:
-  python/.venv/Scripts/python.exe python/scripts/play_server.py --run p4
+  python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 61
+  python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen61.pt   # リリースのファイル
   → http://localhost:8765/shogi3.html を開く
---gen を省くと最新の世代を使う。学習中でも動く（GPU を少し分け合う）。
+--gen を省くと最新の世代を使う。学習中でも動く（GPU を少し分け合う）。GPU がなければ --device cpu（遅い）。
 """
 import argparse
 import glob
@@ -102,14 +103,19 @@ class Engine:
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--run", default="p4")
+    ap.add_argument("--run", default="pbig2")
     ap.add_argument("--gen", type=int, default=None, help="省略時は最新の世代")
+    ap.add_argument("--model", default=None, help="モデルのファイルを直接指定（GitHub のリリースからダウンロードしたものなど）。--run/--gen より優先")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = ap.parse_args()
-    models = sorted(glob.glob(os.path.join(ROOT, "runs", a.run, "models", "gen*.pt")))
-    path = os.path.join(ROOT, "runs", a.run, "models", f"gen{a.gen:04d}.pt") if a.gen is not None else models[-1]
-    gen = int(re.search(r"gen(\d+)", os.path.basename(path)).group(1))
+    if a.model:
+        path = a.model
+    else:
+        models = sorted(glob.glob(os.path.join(ROOT, "runs", a.run, "models", "gen*.pt")))
+        path = os.path.join(ROOT, "runs", a.run, "models", f"gen{a.gen:04d}.pt") if a.gen is not None else models[-1]
+    m = re.search(r"gen(\d+)", os.path.basename(path))
+    gen = int(m.group(1)) if m else None
     engine = Engine(path, torch.device(a.device))
 
     class Handler(SimpleHTTPRequestHandler):
@@ -125,7 +131,7 @@ def main():
 
         def do_GET(self):
             if self.path == "/api/info":
-                return self.reply({"run": a.run, "gen": gen, "device": a.device})
+                return self.reply({"run": None if a.model else a.run, "gen": gen, "model": os.path.basename(path), "device": a.device})
             super().do_GET()
 
         def do_POST(self):
@@ -148,7 +154,7 @@ def main():
             self.end_headers()
             self.wfile.write(body)
 
-    print(f"世代{gen}（{a.run}）を読み込みました。http://localhost:{a.port}/shogi3.html を開いてください", flush=True)
+    print(f"{os.path.basename(path)} を読み込みました。http://localhost:{a.port}/shogi3.html を開いてください", flush=True)
     ThreadingHTTPServer(("127.0.0.1", a.port), Handler).serve_forever()
 
 
