@@ -7,6 +7,10 @@
 
 ルールは [RULES.md](RULES.md)、学習AIの設計と結果は [docs/](docs/README.md) を参照。
 
+![学習AIの成長曲線](docs/growth.svg)
+
+駒価値だけで読む足場（0）から、今の最強（pbig2 世代61）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。
+
 ## 遊び方
 
 ### 手作りのCPUと対局する
