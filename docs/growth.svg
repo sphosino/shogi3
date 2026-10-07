@@ -16,48 +16,49 @@
 <line x1="58" x2="876" y1="56.0" y2="56.0" stroke="#dedbd0" stroke-dasharray="2 4"/>
 <text x="50" y="60.0" font-size="11" fill="#8a867b" text-anchor="end">2400</text>
 <text x="58.0" y="426" font-size="11" fill="#8a867b" text-anchor="middle">0</text>
-<text x="185.3" y="426" font-size="11" fill="#8a867b" text-anchor="middle">50</text>
-<text x="312.6" y="426" font-size="11" fill="#8a867b" text-anchor="middle">100</text>
-<text x="439.9" y="426" font-size="11" fill="#8a867b" text-anchor="middle">150</text>
-<text x="567.2" y="426" font-size="11" fill="#8a867b" text-anchor="middle">200</text>
-<text x="694.5" y="426" font-size="11" fill="#8a867b" text-anchor="middle">250</text>
-<text x="821.8" y="426" font-size="11" fill="#8a867b" text-anchor="middle">300</text>
+<text x="177.5" y="426" font-size="11" fill="#8a867b" text-anchor="middle">50</text>
+<text x="297.0" y="426" font-size="11" fill="#8a867b" text-anchor="middle">100</text>
+<text x="416.5" y="426" font-size="11" fill="#8a867b" text-anchor="middle">150</text>
+<text x="535.9" y="426" font-size="11" fill="#8a867b" text-anchor="middle">200</text>
+<text x="655.4" y="426" font-size="11" fill="#8a867b" text-anchor="middle">250</text>
+<text x="774.9" y="426" font-size="11" fill="#8a867b" text-anchor="middle">300</text>
 <text x="876" y="444" font-size="11" fill="#8a867b" text-anchor="end">今の最強に至る系列の自己対局（千局）</text>
-<line x1="325.3" x2="325.3" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
-<text x="329.3" y="44" font-size="11" fill="#55524a">3ルール混合</text>
-<line x1="480.6" x2="480.6" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
-<text x="484.6" y="30" font-size="11" fill="#55524a">過去の世代を混ぜる</text>
-<line x1="582.5" x2="582.5" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
-<text x="586.5" y="44" font-size="11" fill="#55524a">データ窓150万</text>
-<line x1="681.7" x2="681.7" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
-<text x="685.7" y="30" font-size="11" fill="#55524a">12ブロックに蒸留</text>
-<polyline fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" points="58.0,408.0 134.4,362.3 159.8,316.7 185.3,303.7 210.8,273.3 261.7,243.5"/>
-<circle cx="134.4" cy="362.3" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="159.8" cy="316.7" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="185.3" cy="303.7" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="210.8" cy="273.3" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="261.7" cy="243.5" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
-<text x="253.7" y="231.5" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">p4 世代51 1122</text>
-<polyline fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" points="261.7,243.5 261.7,231.7 287.1,225.5 322.8,225.8"/>
-<circle cx="261.7" cy="231.7" r="4.5" fill="#eb6834" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="287.1" cy="225.5" r="4.5" fill="#eb6834" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="322.8" cy="225.8" r="4.5" fill="#eb6834" stroke="#fbfaf6" stroke-width="2"/>
-<text x="314.8" y="213.8" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">p5c 世代25 1242</text>
-<polyline fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" points="322.8,225.8 376.2,197.1 427.2,181.5 478.1,177.1 529.0,167.6 579.9,157.1 630.8,137.7 681.7,132.9"/>
-<circle cx="376.2" cy="197.1" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="427.2" cy="181.5" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="478.1" cy="177.1" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="529.0" cy="167.6" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="579.9" cy="157.1" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="630.8" cy="137.7" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="681.7" cy="132.9" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
-<text x="673.7" y="120.9" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">pmix 世代141 1876</text>
-<polyline fill="none" stroke="#4a3aa7" stroke-width="2" stroke-linejoin="round" points="681.7,132.9 681.7,125.2 735.2,132.5 786.1,122.1 837.0,112.2"/>
-<circle cx="681.7" cy="125.2" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="735.2" cy="132.5" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="786.1" cy="122.1" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
-<circle cx="837.0" cy="112.2" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
-<text x="829.0" y="100.2" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">pbig2 世代61 2017</text>
+<line x1="308.9" x2="308.9" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
+<text x="312.9" y="44" font-size="11" fill="#55524a">3ルール混合</text>
+<line x1="454.7" x2="454.7" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
+<text x="458.7" y="30" font-size="11" fill="#55524a">過去の世代を混ぜる</text>
+<line x1="550.3" x2="550.3" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
+<text x="554.3" y="44" font-size="11" fill="#55524a">データ窓150万</text>
+<line x1="643.5" x2="643.5" y1="48" y2="408" stroke="#b48a2c" stroke-dasharray="3 3"/>
+<text x="647.5" y="30" font-size="11" fill="#55524a">12ブロックに蒸留</text>
+<polyline fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" points="58.0,408.0 129.7,362.3 153.6,316.7 177.5,303.7 201.4,273.3 249.2,243.5"/>
+<circle cx="129.7" cy="362.3" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="153.6" cy="316.7" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="177.5" cy="303.7" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="201.4" cy="273.3" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="249.2" cy="243.5" r="4.5" fill="#2a78d6" stroke="#fbfaf6" stroke-width="2"/>
+<text x="241.2" y="231.5" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">p4 世代51 1122</text>
+<polyline fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" points="249.2,243.5 249.2,231.7 273.1,225.5 306.5,225.8"/>
+<circle cx="249.2" cy="231.7" r="4.5" fill="#eb6834" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="273.1" cy="225.5" r="4.5" fill="#eb6834" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="306.5" cy="225.8" r="4.5" fill="#eb6834" stroke="#fbfaf6" stroke-width="2"/>
+<text x="298.5" y="213.8" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">p5c 世代25 1242</text>
+<polyline fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" points="306.5,225.8 356.7,197.1 404.5,181.5 452.3,177.1 500.1,167.6 547.9,157.1 595.7,137.7 643.5,132.9"/>
+<circle cx="356.7" cy="197.1" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="404.5" cy="181.5" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="452.3" cy="177.1" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="500.1" cy="167.6" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="547.9" cy="157.1" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="595.7" cy="137.7" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="643.5" cy="132.9" r="4.5" fill="#1baf7a" stroke="#fbfaf6" stroke-width="2"/>
+<text x="635.5" y="120.9" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">pmix 世代141 1876</text>
+<polyline fill="none" stroke="#4a3aa7" stroke-width="2" stroke-linejoin="round" points="643.5,132.9 643.5,125.2 693.7,132.5 741.5,122.1 789.3,112.2 837.0,112.7"/>
+<circle cx="643.5" cy="125.2" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="693.7" cy="132.5" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="741.5" cy="122.1" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="789.3" cy="112.2" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
+<circle cx="837.0" cy="112.7" r="4.5" fill="#4a3aa7" stroke="#fbfaf6" stroke-width="2"/>
+<text x="829.0" y="100.7" font-size="12" font-weight="700" fill="#1d1c19" text-anchor="end">pbig2 世代81 2014</text>
 <circle cx="58.0" cy="408.0" r="4.5" fill="#8a867b"/>
 <rect x="58" y="465" width="16" height="3" rx="1.5" fill="#2a78d6"/>
 <text x="80" y="470" font-size="11" fill="#55524a">p4（6ブロック×96ch）</text>
