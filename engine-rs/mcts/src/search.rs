@@ -39,6 +39,8 @@ struct Node {
     terminal: Option<[f32; 3]>,
     n: u32,
     w: [f32; 3],
+    /// 仮想訪問（評価待ちの葉までの道に足す。まとめて評価するとき、同じ道ばかり選ばないように）
+    vl: u32,
 }
 
 /// 評価待ちの葉（またはすでに値が決まっている終局ノード）
@@ -51,6 +53,11 @@ pub struct Leaf {
 impl Leaf {
     fn node(&self) -> u32 {
         *self.path.last().unwrap()
+    }
+
+    /// 葉のノード番号（まとめて評価するとき、同じ葉を2回選んでいないかの確認用）
+    pub fn id(&self) -> u32 {
+        self.node()
     }
 }
 
@@ -70,7 +77,7 @@ fn onehot(w: u8) -> [f32; 3] {
 impl Search {
     pub fn new(root: Position, cfg: SearchConfig) -> Search {
         Search {
-            nodes: vec![Node { pos: root, edges_start: 0, edges_len: 0, expanded: false, terminal: None, n: 0, w: [0.0; 3] }],
+            nodes: vec![Node { pos: root, edges_start: 0, edges_len: 0, expanded: false, terminal: None, n: 0, w: [0.0; 3], vl: 0 }],
             edges: Vec::new(),
             cfg,
             moves_buf: Vec::with_capacity(1024),
@@ -98,7 +105,7 @@ impl Search {
                 return Leaf { path, terminal: None };
             }
             let p = node.pos.turn as usize;
-            let sqrt_n = (node.n.max(1) as f32).sqrt();
+            let sqrt_n = ((node.n + node.vl).max(1) as f32).sqrt();
             let parent_q = if node.n > 0 { node.w[p] / node.n as f32 } else { 0.0 };
             let fpu = (parent_q - self.cfg.fpu_reduction).max(0.0);
             let (s, l) = (node.edges_start as usize, node.edges_len as usize);
@@ -110,10 +117,12 @@ impl Search {
                     (fpu, 0u32)
                 } else {
                     let c = &self.nodes[e.child as usize];
-                    if c.n == 0 {
+                    let vn = c.n + c.vl;
+                    if vn == 0 {
                         (fpu, 0)
                     } else {
-                        (c.w[p] / c.n as f32, c.n)
+                        // 仮想訪問は「負け（価値0）」として数える
+                        (c.w[p] / vn as f32, vn)
                     }
                 };
                 let score = q + self.cfg.c_puct * e.prior * sqrt_n / (1.0 + cn as f32);
@@ -133,7 +142,7 @@ impl Search {
                     pos.play(mv).map(|o| onehot(o.winner))
                 };
                 let id = self.nodes.len() as u32;
-                self.nodes.push(Node { pos, edges_start: 0, edges_len: 0, expanded: false, terminal, n: 0, w: [0.0; 3] });
+                self.nodes.push(Node { pos, edges_start: 0, edges_len: 0, expanded: false, terminal, n: 0, w: [0.0; 3], vl: 0 });
                 self.edges[best].child = id;
                 path.push(id);
                 return Leaf { path, terminal };
@@ -184,6 +193,22 @@ impl Search {
                 n.w[k] += value[k];
             }
         }
+    }
+
+    /// 葉までの道に仮想訪問を1つ足す（評価待ちにするとき）
+    pub fn add_virtual(&mut self, leaf: &Leaf) {
+        for &id in &leaf.path {
+            self.nodes[id as usize].vl += 1;
+        }
+    }
+
+    /// 仮想訪問を外してから展開する（add_virtual した葉の評価が返ってきたとき）
+    pub fn expand_virtual(&mut self, leaf: Leaf, moves: &[Move], eval: Option<EvalOut>) {
+        for &id in &leaf.path {
+            let n = &mut self.nodes[id as usize];
+            n.vl = n.vl.saturating_sub(1);
+        }
+        self.expand(leaf, moves, eval);
     }
 
     /// 評価器を直接呼んで visits 回まで探索する（推論をまとめない単純版）

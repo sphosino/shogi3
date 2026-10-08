@@ -1,0 +1,12 @@
+[package]
+name = "shogi3-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "ブラウザ版の探索（WebAssembly）。推論はブラウザの ONNX Runtime Web が行い、探索とルールをここで動かす"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+shogi3-core = { path = "../core" }
+shogi3-mcts = { path = "../mcts" }

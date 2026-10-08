@@ -69,12 +69,30 @@ function kickAI(){
   },delay);
 }
 
-// 学習したネットに指し手を聞く（python/scripts/play_server.py）。つながらなければ従来のAIで指す
+// 学習したネットに指し手を聞く。まずブラウザ内（web/ai.js：WebGPU、なければCPU）で動かし、
+// 使えなければ play_server.py に問い合わせる。どちらも使えなければ従来のAIで指す
+async function askNet(req){
+  if(window.LocalAI && window.ort){
+    if(!LocalAI.ready && !LocalAI.failed){
+      try{
+        setStatus('学習AIを準備中…（初回だけ数秒かかります）');
+        const p=await LocalAI.init();
+        console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、1手'+LocalAI.visits+'回探索）');
+      }catch(e){
+        LocalAI.failed=true;
+        console.warn('ブラウザ内の学習AIを使えないので、サーバーに問い合わせます:', e);
+      }
+    }
+    if(LocalAI.ready) return LocalAI.think(req);
+  }
+  const r=await fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
+  return r.json();
+}
+
 function netMove(_g){
   const cfg=DIFFICULTY_LEVELS[currentDifficulty];
   const req={board, hand, eliminated, turn, moveCount, rule:keepAllPieces, visits:cfg.visits};
-  fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)})
-    .then(r=>r.json())
+  askNet(req)
     .then(res=>{
       if(_g!==gameGen||gover) return;
       if(res.error) throw new Error(res.error);
@@ -84,7 +102,7 @@ function netMove(_g){
       if(!gover) nextTurn(board);
     })
     .catch(e=>{
-      console.error('学習AIに接続できません（play_server.py から開いていますか？）:',e);
+      console.error('学習AIを使えません（ブラウザ内でもサーバーでも動かせませんでした）:',e);
       if(_g!==gameGen||gover) return;
       setStatus('学習AIに接続できないため、中級のAIで指します');
       const mv=aiMove(turn,board,hand,eliminated);
