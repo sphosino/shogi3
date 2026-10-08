@@ -8,5 +8,6 @@ python/.venv/
 __pycache__/
 *.pyc
 runs_*.out
-web/models/
+web/models/*
+!web/models/pbig2-gen101.onnx
 runs_*.err

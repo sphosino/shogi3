@@ -13,6 +13,8 @@
 
 ## 遊び方
 
+**ブラウザで今すぐ遊ぶ：https://sphosino.github.io/shogi3/shogi3.html**（難易度で「🧠 学習AI」を選ぶと、学習したAIがあなたのPCのGPUで動きます。GPUが使えなければCPUで、少し弱く遅くなります）
+
 ### 手作りのCPUと対局する
 
 `shogi3.html` をブラウザで開く（サーバー不要）。
