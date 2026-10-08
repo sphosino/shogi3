@@ -70,8 +70,11 @@ def decode_move(m: int, board):
 
 
 class Engine:
-    def __init__(self, path, device):
+    def __init__(self, path, device, temp=0.5, temp_plies=15):
         self.device = device
+        # 序盤だけ、探索の票の多さに応じてくじ引きで手を選ぶ（毎回同じ展開にならないように。KataGo の chosenMoveTemperatureEarly と同じ考え方）
+        self.temp, self.temp_plies = temp, temp_plies
+        self.rng = np.random.default_rng()
         self.model = M.load(path, device).eval()
         self.lock = threading.Lock()
 
@@ -91,6 +94,10 @@ class Engine:
                 s.submit(p[0].cpu().tolist(), v[0].cpu().tolist())
         best, counts, value = s.result()
         counts = sorted(counts, key=lambda x: -x[1])
+        if self.temp > 0 and int(req["moveCount"]) < self.temp_plies and counts and counts[0][0] != PASS:
+            n = np.array([c for _, c in counts], dtype=np.float64)
+            w = n ** (1.0 / self.temp)
+            best = counts[int(self.rng.choice(len(counts), p=w / w.sum()))][0]
         return {
             "move": None if best == PASS else decode_move(best, req["board"]),
             "value": [round(x, 3) for x in value],
@@ -108,6 +115,8 @@ def main():
     ap.add_argument("--model", default=None, help="モデルのファイルを直接指定（GitHub のリリースからダウンロードしたものなど）。--run/--gen より優先")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    ap.add_argument("--temp", type=float, default=0.5, help="序盤の手のランダムさ（0で常に最多票の手）")
+    ap.add_argument("--temp-plies", type=int, default=15, help="ランダムさを入れる手数（3人の合計）")
     a = ap.parse_args()
     if a.model:
         path = a.model
@@ -116,7 +125,7 @@ def main():
         path = os.path.join(ROOT, "runs", a.run, "models", f"gen{a.gen:04d}.pt") if a.gen is not None else models[-1]
     m = re.search(r"gen(\d+)", os.path.basename(path))
     gen = int(m.group(1)) if m else None
-    engine = Engine(path, torch.device(a.device))
+    engine = Engine(path, torch.device(a.device), a.temp, a.temp_plies)
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kw):
