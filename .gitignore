@@ -8,3 +8,4 @@ python/.venv/
 __pycache__/
 *.pyc
 runs_*.out
+web/models/
