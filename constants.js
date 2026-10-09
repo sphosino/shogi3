@@ -104,6 +104,7 @@ let cpuCollusion = false;
 let keepAllPieces = true; // 'all'=常に持ち駒、'next'=次のプレイヤーへ、false=消滅あり
 let gameGen = 0;
 let kifu = [];
+let gameRecord = null; // 棋譜の書き出し用 {start: 最初の局面, moves: [{o, mv, v?}]}（game.js の applyMove が記録）
 let kifuView = null; // null=現在局を表示、配列=閲覧中の古い棋譜
 
 // ── 自己対局モード ──

@@ -98,7 +98,7 @@ function netMove(_g){
       if(res.error) throw new Error(res.error);
       const v=res.value.map(x=>Math.round(x*100));
       console.log(`学習AI ${PNAME_BASE[turn]}: 勝率予想 青${v[0]}% 赤${v[1]}% 緑${v[2]}%（${res.sec}秒）`, res.top);
-      if(res.move){ applyMove(res.move,turn); render(); }
+      if(res.move){ applyMove(res.move,turn); if(gameRecord&&gameRecord.moves.length) gameRecord.moves[gameRecord.moves.length-1].v=res.value; render(); }
       if(!gover) nextTurn(board);
     })
     .catch(e=>{
@@ -296,6 +296,11 @@ function allMoves(o,bd){
 
 // ── 手を適用 ──
 function applyMove(mv,o){
+  // 棋譜の書き出し用：対局の最初の局面と、指した手を順に記録する（新しい対局では kifu が空になる）
+  if(kifu.length===0 || !gameRecord){
+    gameRecord={start:JSON.parse(JSON.stringify({board,hand,eliminated,turn:o,moveCount,rule:keepAllPieces})), moves:[]};
+  }
+  gameRecord.moves.push({o, mv: mv.drop ? {drop:true, piece:mv.piece, tr:mv.tr, tc:mv.tc} : {fr:mv.fr, fc:mv.fc, tr:mv.tr, tc:mv.tc, pro:!!mv.pro}});
   moveCount++;
   // 500手制限：駒価値で順位決定
   if(moveCount >= MAX_MOVES){

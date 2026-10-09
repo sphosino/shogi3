@@ -281,6 +281,7 @@ function resignHuman(){
   }
   eliminated[p] = true;
   humanEliminated = true;
+  if(gameRecord) gameRecord.moves.push({o:p, resign:true});
   kifu.push({fugo:'投了', col:PCOL[p], name:PNAME_BASE[p]});
   renderKifu();
   buildAttackMaps(board);
@@ -295,6 +296,32 @@ function resignHuman(){
   render();
   // 自分の手番なら次へ。CPUが考え中なら、その手のあと自動で次へ進む（脱落者は飛ばされる）
   if(turn === p) nextTurn(board);
+}
+
+// ── 棋譜のコピー ──
+// 最初の局面・全部の手（学習AIの手には勝率予想 v つき）・符号・今の局面を JSON でクリップボードへ
+function copyGameRecord(){
+  const rec = {
+    version: 1,
+    difficulty: currentDifficulty,
+    human: humanPlayer,
+    start: gameRecord ? gameRecord.start : null,
+    moves: gameRecord ? gameRecord.moves : [],
+    fugo: kifu.map(k=>k.name+' '+k.fugo),
+    final: {board, hand, eliminated, turn, moveCount, rule:keepAllPieces, gover, winner},
+  };
+  const text = JSON.stringify(rec);
+  const done = ()=>setStatus('📋 棋譜をコピーしました（'+rec.moves.length+'手）');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, ()=>fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ prompt('コピーしてください', text); }
+  ta.remove();
 }
 
 // ── クリック ──
