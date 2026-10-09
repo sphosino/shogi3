@@ -33,6 +33,7 @@
         } catch (e) { lastErr = e; }
       }
       if (!this.sess) throw lastErr || new Error("ネットを読み込めませんでした");
+      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen120
       if (this.provider === "wasm") { this.visits = o.cpuVisits || 200; this.batch = 4; }
       else { this.visits = o.visits || 800; this.batch = 16; }
       this.ready = true;

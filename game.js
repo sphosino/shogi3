@@ -77,7 +77,7 @@ async function askNet(req){
       try{
         setStatus('学習AIを準備中…（初回だけ数秒かかります）');
         const p=await LocalAI.init();
-        console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、1手'+LocalAI.visits+'回探索）');
+        console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、1手'+LocalAI.visits+'回探索、重み '+LocalAI.model+'）');
       }catch(e){
         LocalAI.failed=true;
         console.warn('ブラウザ内の学習AIを使えないので、サーバーに問い合わせます:', e);

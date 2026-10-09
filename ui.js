@@ -304,6 +304,7 @@ function copyGameRecord(){
   const rec = {
     version: 1,
     difficulty: currentDifficulty,
+    model: (window.LocalAI && LocalAI.ready) ? LocalAI.model : null,
     human: humanPlayer,
     start: gameRecord ? gameRecord.start : null,
     moves: gameRecord ? gameRecord.moves : [],
