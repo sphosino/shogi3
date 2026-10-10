@@ -305,39 +305,58 @@ function drawReviewOverlay() {
     ctx.closePath(); ctx.fill();
     ctx.restore();
   });
-  const seen = new Set(), same = {};
-  a.top.forEach((c) => { if (c.move) { const kk = c.move.tr * 9 + c.move.tc; same[kk] = (same[kk] || 0) + 1; } });
-  a.top.forEach((c, i) => {
-    if (!c.move) return;
-    const key = c.move.tr * 9 + c.move.tc;
-    if (seen.has(key)) return;           // 同じマスへの手は、いちばん読んだ手だけ描く
-    seen.add(key);
+  // マスごとに候補をまとめる（読んだ順）
+  const groups = {};
+  a.top.forEach((c, i) => { if (c.move) (groups[c.move.tr * 9 + c.move.tc] = groups[c.move.tr * 9 + c.move.tc] || []).push({ c, i }); });
+  const nameOf = (m) => {
+    if (m.drop) return PC[m.piece] + '打';
+    const cell = p.board[m.fr][m.fc];
+    return cell ? (cell.pr ? (PCP[cell.p] || PC[cell.p]) : PC[cell.p]) + (m.pro ? '成' : '') : '';
+  };
+  const pct = (c) => (c.value ? Math.round(c.value[t] * 100) + '%' : '-');
+  Object.values(groups).forEach((g) => {
+    const { c, i } = g[0];
     const [x, y] = cellXY(c.move.tr, c.move.tc);
-    const share = c.visits / tot;
     ctx.save();
-    ctx.globalAlpha = 0.55 + 0.4 * Math.min(1, share * 2);
-    ctx.fillStyle = i === 0 ? '#00b8d4' : '#2e7d5b';
-    ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = i === 0 ? '#aaf6ff' : '#9fd8b8'; ctx.lineWidth = i === 0 ? 2.5 : 1.2; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText(c.value ? Math.round(c.value[t] * 100) + '%' : '-', x, y - 5);
-    ctx.font = '10px sans-serif';
-    ctx.fillText(Math.round(share * 100) + '%', x, y + 9);
-    // 右上に駒の名前（打つ手は「香打」のように。成る手は「成」をつける）
-    let label;
-    if (c.move.drop) label = PC[c.move.piece] + '打';
-    else {
-      const cell = p.board[c.move.fr][c.move.fc];
-      label = cell ? (cell.pr ? (PCP[cell.p] || PC[cell.p]) : PC[cell.p]) + (c.move.pro ? '成' : '') : '';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (g.length === 1) {
+      // 候補が1つのマス：丸に勝率（上）と読んだ割合（下）、右上に駒の名前
+      const share = c.visits / tot;
+      ctx.globalAlpha = 0.55 + 0.4 * Math.min(1, share * 2);
+      ctx.fillStyle = i === 0 ? '#00b8d4' : '#2e7d5b';
+      ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = i === 0 ? '#aaf6ff' : '#9fd8b8'; ctx.lineWidth = i === 0 ? 2.5 : 1.2; ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px sans-serif'; ctx.fillText(pct(c), x, y - 5);
+      ctx.font = '10px sans-serif'; ctx.fillText(Math.round(share * 100) + '%', x, y + 9);
+      const label = nameOf(c.move);
+      ctx.font = 'bold 12px serif';
+      const lw = ctx.measureText(label).width + 6, lx = x + 14, ly = y - 17;
+      ctx.fillStyle = 'rgba(20,12,0,0.8)'; ctx.fillRect(lx - lw / 2, ly - 8, lw, 16);
+      ctx.fillStyle = c.move.drop ? '#ffe9a0' : '#fff';
+      ctx.fillText(label, lx, ly + 1);
+    } else {
+      // 候補がいくつかあるマス：小さな札を縦に並べる（最大3つ。それ以上は「他n」）。濃さ＝読んだ割合
+      const rows = g.length > 3 ? 3 : g.length, rh = 16, top = y - (rows * rh) / 2;
+      for (let j = 0; j < rows; j++) {
+        const yy = top + j * rh + rh / 2;
+        if (j === 2 && g.length > 3) {
+          ctx.fillStyle = 'rgba(20,12,0,0.85)'; ctx.fillRect(x - CS / 2 + 2, yy - rh / 2 + 1, CS - 4, rh - 2);
+          ctx.fillStyle = '#cde'; ctx.font = '10px sans-serif'; ctx.fillText(`他${g.length - 2}`, x, yy + 1);
+          continue;
+        }
+        const { c: cj, i: ij } = g[j], share = cj.visits / tot;
+        ctx.globalAlpha = 0.6 + 0.4 * Math.min(1, share * 2);
+        ctx.fillStyle = ij === 0 ? '#00b8d4' : '#2e7d5b';
+        ctx.fillRect(x - CS / 2 + 2, yy - rh / 2 + 1, CS - 4, rh - 2);
+        ctx.globalAlpha = 1;
+        if (ij === 0) { ctx.strokeStyle = '#aaf6ff'; ctx.lineWidth = 1.5; ctx.strokeRect(x - CS / 2 + 2, yy - rh / 2 + 1, CS - 4, rh - 2); }
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = cj.move.drop ? '#ffe9a0' : '#fff';
+        ctx.fillText(`${nameOf(cj.move)} ${pct(cj)}`, x, yy + 1);
+      }
     }
-    if (same[key] > 1) label += ' +' + (same[key] - 1);   // 同じマスへのほかの候補の数（一覧で見られる）
-    ctx.font = 'bold 12px serif';
-    const lw = ctx.measureText(label).width + 6, lx = x + 14, ly = y - 17;
-    ctx.fillStyle = 'rgba(20,12,0,0.8)'; ctx.fillRect(lx - lw / 2, ly - 8, lw, 16);
-    ctx.fillStyle = c.move.drop ? '#ffe9a0' : '#fff';
-    ctx.fillText(label, lx, ly + 1);
     ctx.restore();
   });
 }
