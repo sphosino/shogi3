@@ -286,7 +286,27 @@ function drawReviewOverlay() {
   }
   if (!a || selected || review.dropPiece) return;   // 駒を選んでいる間は候補手を隠す
   const tot = a.top.reduce((s, x) => s + x.visits, 0) || 1, t = p.turn;
-  const seen = new Set();
+  const R = 21;
+  // 盤上の駒を動かす手は、動かす元から矢印（上位5手。よく読んだ手ほど太い）。円より先に描いて下に敷く
+  a.top.slice(0, 5).forEach((c, i) => {
+    if (!c.move || c.move.drop) return;
+    const [fx, fy] = cellXY(c.move.fr, c.move.fc), [x, y] = cellXY(c.move.tr, c.move.tc);
+    const dx = x - fx, dy = y - fy, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+    const ex = x - ux * R, ey = y - uy * R;                 // 円の縁で止める
+    const w = 2 + 5 * Math.min(1, (c.visits / tot) * 1.5);
+    ctx.save();
+    ctx.strokeStyle = ctx.fillStyle = i === 0 ? 'rgba(0,229,255,0.75)' : 'rgba(120,230,170,0.6)';
+    ctx.lineWidth = w; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ex - ux * w, ey - uy * w); ctx.stroke();
+    const h = 7 + w;                                        // 矢じり
+    ctx.beginPath(); ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - ux * h - uy * h * 0.6, ey - uy * h + ux * h * 0.6);
+    ctx.lineTo(ex - ux * h + uy * h * 0.6, ey - uy * h - ux * h * 0.6);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  });
+  const seen = new Set(), same = {};
+  a.top.forEach((c) => { if (c.move) { const kk = c.move.tr * 9 + c.move.tc; same[kk] = (same[kk] || 0) + 1; } });
   a.top.forEach((c, i) => {
     if (!c.move) return;
     const key = c.move.tr * 9 + c.move.tc;
@@ -295,11 +315,6 @@ function drawReviewOverlay() {
     const [x, y] = cellXY(c.move.tr, c.move.tc);
     const share = c.visits / tot;
     ctx.save();
-    if (i === 0 && !c.move.drop) {       // 最善手は動かす元から線を引く
-      const [fx, fy] = cellXY(c.move.fr, c.move.fc);
-      ctx.strokeStyle = 'rgba(0,229,255,0.55)'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(x, y); ctx.stroke();
-    }
     ctx.globalAlpha = 0.55 + 0.4 * Math.min(1, share * 2);
     ctx.fillStyle = i === 0 ? '#00b8d4' : '#2e7d5b';
     ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.fill();
@@ -310,10 +325,19 @@ function drawReviewOverlay() {
     ctx.fillText(c.value ? Math.round(c.value[t] * 100) + '%' : '-', x, y - 5);
     ctx.font = '10px sans-serif';
     ctx.fillText(Math.round(share * 100) + '%', x, y + 9);
-    if (c.move.drop) {                   // 打つ手は駒の名前を角に
-      ctx.font = 'bold 11px serif'; ctx.fillStyle = '#ffe9a0';
-      ctx.fillText(PC[c.move.piece], x + 16, y - 16);
+    // 右上に駒の名前（打つ手は「香打」のように。成る手は「成」をつける）
+    let label;
+    if (c.move.drop) label = PC[c.move.piece] + '打';
+    else {
+      const cell = p.board[c.move.fr][c.move.fc];
+      label = cell ? (cell.pr ? (PCP[cell.p] || PC[cell.p]) : PC[cell.p]) + (c.move.pro ? '成' : '') : '';
     }
+    if (same[key] > 1) label += ' +' + (same[key] - 1);   // 同じマスへのほかの候補の数（一覧で見られる）
+    ctx.font = 'bold 12px serif';
+    const lw = ctx.measureText(label).width + 6, lx = x + 14, ly = y - 17;
+    ctx.fillStyle = 'rgba(20,12,0,0.8)'; ctx.fillRect(lx - lw / 2, ly - 8, lw, 16);
+    ctx.fillStyle = c.move.drop ? '#ffe9a0' : '#fff';
+    ctx.fillText(label, lx, ly + 1);
     ctx.restore();
   });
 }
