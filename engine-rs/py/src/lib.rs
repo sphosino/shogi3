@@ -11,7 +11,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use shogi3_core::{make_drop, make_move, mv_from, mv_promote, mv_to, CaptureRule, Move, Position, WinKind};
+use shogi3_core::{make_drop, make_move, mv_from, mv_promote, mv_to, piece_owner, piece_type, CaptureRule, Move, Position, WinKind, OU};
 use shogi3_mcts::{Agent, EvalOut, Evaluator, GreedyAgent, Leaf, MaterialEval, MctsAgent, RandomAgent, Rng, Search, SearchConfig, PASS};
 
 pub const STATE_BYTES: usize = 109;
@@ -122,6 +122,8 @@ struct Game {
     elim_events: Vec<(usize, u8)>,
     outcome: Option<(u8, WinKind)>,
     rng: Rng,
+    /// この手数になったら大差の局面を作る（0 = 作らない）。gift_prob の対局だけ
+    gift_at: u16,
 }
 
 #[derive(Clone)]
@@ -144,6 +146,8 @@ pub struct Driver {
     /// 過去の世代を混ぜる対局（alt_prob の確率で、この中から1つを選び、席をランダムに回す）
     alt_seats: Vec<Vec<String>>,
     alt_prob: f64,
+    /// 大差の局面を混ぜる対局の割合（途中で1人に他の人の駒を渡す。docs/training.md）
+    gift_prob: f64,
     record: bool,
     total_games: u64,
     started: u64,
@@ -169,6 +173,7 @@ impl Driver {
         } else {
             (&self.seat_specs, if self.rotate { (id % 3) as usize } else { 0 })
         };
+        let gift_at = if self.gift_prob > 0.0 && pick.unit() < self.gift_prob { 20 + pick.below(101) as u16 } else { 0 };
         let mut seats = Vec::with_capacity(3);
         for s in 0..3 {
             // 基本の並び [A,B,C] を対局ごとにずらす（評価：測る側の席を入れ替える／過去の世代を混ぜる対局：席をランダムに）
@@ -189,7 +194,33 @@ impl Driver {
             elim_events: Vec::new(),
             outcome: None,
             rng: Rng::new(seed ^ 0xABCDEF),
+            gift_at,
         })
+    }
+
+    /// 大差の局面を作る：生き残っている1人を選び、他の生存者の盤上の駒（玉以外）を5〜20枚、その人の持ち駒にする。
+    /// 自己対局では3人の強さがそろうので、1人が駒を大量に持つ局面がほとんど出ず、ネットがそういう局面を正しく評価できなかった
+    fn gift(g: &mut Game) {
+        let p = &g.pos;
+        let alive: Vec<u8> = (0..3u8).filter(|&o| !p.elim[o as usize]).collect();
+        if alive.len() < 2 {
+            return;
+        }
+        let b = alive[g.rng.below(alive.len())];
+        let mut cand: Vec<usize> = (0..81)
+            .filter(|&sq| {
+                let c = p.board[sq];
+                c != 0 && piece_type(c) != OU && piece_owner(c) != b && !p.elim[piece_owner(c) as usize]
+            })
+            .collect();
+        let (mut board, mut hand) = (p.board, p.hand);
+        let k = 5 + g.rng.below(16);
+        for _ in 0..k.min(cand.len()) {
+            let sq = cand.swap_remove(g.rng.below(cand.len()));
+            hand[b as usize][piece_type(board[sq]) as usize] += 1;
+            board[sq] = 0;
+        }
+        g.pos = Position::from_parts(board, hand, p.elim, p.turn, p.move_count, p.rule);
     }
 
     /// 1局を、ネットの評価が必要になるか終局するまで進める。評価待ちなら true
@@ -197,6 +228,10 @@ impl Driver {
         loop {
             if g.outcome.is_some() {
                 return false;
+            }
+            if g.gift_at > 0 && g.search.is_none() && g.pos.move_count >= g.gift_at {
+                g.gift_at = 0;
+                Self::gift(g);
             }
             let turn = g.pos.turn as usize;
             if let Seat::Internal(agent) = &mut g.seats[turn] {
@@ -314,7 +349,7 @@ impl Driver {
     #[new]
     #[pyo3(signature = (parallel, total_games, seats, rotate=false, record=true, visits_full=600, visits_fast=100, full_prob=0.25,
                         temp_plies=30, c_puct=1.5, fpu_reduction=0.2, dirichlet_total=10.0, dirichlet_weight=0.25, scaffold=false, seed=1, rule="all",
-                        alt_seats=Vec::new(), alt_prob=0.0))]
+                        alt_seats=Vec::new(), alt_prob=0.0, gift_prob=0.0))]
     #[allow(clippy::too_many_arguments)]
     fn py_new(
         parallel: usize,
@@ -335,6 +370,7 @@ impl Driver {
         rule: &str,
         alt_seats: Vec<Vec<String>>,
         alt_prob: f64,
+        gift_prob: f64,
     ) -> PyResult<Driver> {
         if seats.len() != 3 {
             return Err(PyValueError::new_err("seats は3つ"));
@@ -358,6 +394,7 @@ impl Driver {
             rotate,
             alt_seats,
             alt_prob,
+            gift_prob,
             record,
             total_games,
             started: 0,

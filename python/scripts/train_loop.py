@@ -54,6 +54,7 @@ def parse():
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり / mix=3つを均等に混ぜる）")
     p.add_argument("--past-prob", type=float, default=0.0, help="自己対局のうち過去の世代を混ぜる対局の割合（半分は 現世代2+過去1、半分は 現世代1+過去2）")
+    p.add_argument("--gift-prob", type=float, default=0.0, help="自己対局のうち、途中（20〜120手目）で1人に他の人の駒を5〜20枚渡して大差の局面を作る対局の割合")
     p.add_argument("--past-start", type=int, default=21, help="過去の世代の候補：この世代から")
     p.add_argument("--past-every", type=int, default=10, help="過去の世代の候補：この間隔ごと")
     p.add_argument("--past-max", type=int, default=6, help="過去の世代の候補の最大数（新しい方から）")
@@ -220,7 +221,8 @@ def main():
                 alt += [["net:0", "net:0", f"net:{i + 1}"], ["net:0", f"net:{i + 1}", f"net:{i + 1}"]]
         drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
                                visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
-                               seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=a.past_prob if alt else 0.0)
+                               seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=a.past_prob if alt else 0.0,
+                               gift_prob=a.gift_prob)
         stats = {}
         d = D.decode(run_driver(drv, models, device, stats))
         if alt:
