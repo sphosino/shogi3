@@ -59,7 +59,7 @@ function setHumanPlayer(p){
 function setSelfPlayDiffBtns(locked){
   // 自己対局中はプレイヤー選択・難易度・共闘・盤面初期化ボタンを無効化
   ['init-btn',
-   'diff-beginner','diff-easy','diff-normal','diff-hard',
+   'diff-cpu','diff-net','think-time',
    'col-on','col-off', 'sp-btn',
    'hb0','hb1','hb2'].forEach(id=>{
     const btn=document.getElementById(id);
@@ -711,11 +711,11 @@ function setDifficulty(level){
   AI_SEARCH_DEPTH      = cfg.depth;
   AI_NOISE             = cfg.noise;
   AI_TIME_LIMIT_MS     = cfg.timeMs;
-  // ボタンハイライト更新
-  Object.keys(DIFFICULTY_LEVELS).forEach(k=>{
+  // ボタンハイライト更新（CPU / 学習AI の2つ）
+  ['cpu','net'].forEach(k=>{
     const btn=document.getElementById('diff-'+k);
     if(btn){
-      const active = k===level;
+      const active = (k==='net') === !!cfg.net;
       btn.style.background   = active ? '#7a3a00' : '#2a1200';
       btn.style.border       = active ? '1px solid #ffaa44' : '1px solid #804010';
       btn.style.color        = active ? '#ffe090' : '#c0a060';
@@ -724,15 +724,23 @@ function setDifficulty(level){
   });
   // 難易度ラベル更新
   const lbl = document.getElementById('diff-label');
-  if(lbl) lbl.textContent = cfg.emoji+' 難易度: '+cfg.label+(cfg.net ? '（'+netTimeMs/1000+'秒）' : '');
+  if(lbl) lbl.textContent = cfg.net ? '🧠 難易度: 学習AI（'+thinkMs/1000+'秒）' : cfg.emoji+' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）';
 }
 
-// 学習AIが1手に考える時間（ミリ秒）
-function setNetTime(ms){
-  netTimeMs = Number(ms) || 1000;
-  setDifficulty(currentDifficulty);
+// ── AIの種類（CPU / 学習AI）と考える時間 ──
+// CPU は時間に合わせて従来の入門〜上級の設定を使う（8秒は上級の設定で8秒）。学習AIはその時間いっぱい探索する
+const CPU_LEVEL_BY_MS = {500:'beginner', 1000:'easy', 2000:'normal', 4000:'hard', 8000:'hard'};
+function setAIKind(kind){ aiKind = kind; applyAISetting(); }
+function setThinkTime(ms){ thinkMs = Number(ms) || 2000; applyAISetting(); }
+function applyAISetting(){
+  if(aiKind === 'net'){
+    netTimeMs = thinkMs;
+    setDifficulty('net');
+  } else {
+    setDifficulty(CPU_LEVEL_BY_MS[thinkMs] || 'normal');
+    AI_TIME_LIMIT_MS = thinkMs;
+  }
 }
-
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('c');
   ctx = canvas.getContext('2d');
@@ -741,7 +749,7 @@ window.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('contextmenu', e=>{ e.preventDefault(); if(editMode) editHandleClick(e); });
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
-  setDifficulty(currentDifficulty);
+  applyAISetting();
   setCpuCollusion(false);
   setKeepAllPieces('all');
   setHumanPlayer(0);

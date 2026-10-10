@@ -74,16 +74,13 @@
     </div>
       <!-- 難易度行 -->
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:center;width:100%;">
-        <span id="diff-label" style="color:#ffaa44;font-size:13px;letter-spacing:1px;">⚔️ 難易度: 中級</span>
-        <button id="diff-beginner" onclick="setDifficulty('beginner')" title="CPU思考時間: 0.5秒">🌱 入門<span style="font-size:10px;opacity:0.7;margin-left:3px">0.5s</span></button>
-        <button id="diff-easy"     onclick="setDifficulty('easy')"     title="CPU思考時間: 1秒">🌿 初級<span style="font-size:10px;opacity:0.7;margin-left:3px">1s</span></button>
-        <button id="diff-normal"   onclick="setDifficulty('normal')"   title="CPU思考時間: 2秒">⚔️ 中級<span style="font-size:10px;opacity:0.7;margin-left:3px">2s</span></button>
-        <button id="diff-hard"     onclick="setDifficulty('hard')"     title="CPU思考時間: 4秒">🔥 上級<span style="font-size:10px;opacity:0.7;margin-left:3px">4s</span></button>
-        <button id="diff-net"      onclick="setDifficulty('net')"      title="学習したネット。ブラウザ内（GPU、なければCPU）か、play_server.py で動かします。考える時間は右で選べます">🧠 学習AI</button>
-        <select id="net-time" onchange="setNetTime(this.value)" title="学習AIが1手に考える時間（長いほど強い）" style="background:#2a1200;border:1px solid #804010;color:#c0a060;border-radius:4px;padding:2px 4px;">
+        <span id="diff-label" style="color:#ffaa44;font-size:13px;letter-spacing:1px;">⚔️ 難易度: CPU 中級（2秒）</span>
+        <button id="diff-cpu" onclick="setAIKind('cpu')" title="手作りのAI（駒の価値で読む）。考える時間で強さが変わります：0.5秒＝入門、1秒＝初級、2秒＝中級、4秒以上＝上級">⚔️ CPU</button>
+        <button id="diff-net" onclick="setAIKind('net')" title="自己対局で学習したネット。ブラウザ内（GPU、なければCPU）か、play_server.py で動きます。考える時間いっぱい探索します">🧠 学習AI</button>
+        <select id="think-time" onchange="setThinkTime(this.value)" title="AIが1手に考える時間（長いほど強い）" style="background:#2a1200;border:1px solid #804010;color:#c0a060;border-radius:4px;padding:2px 4px;">
           <option value="500">0.5秒</option>
-          <option value="1000" selected>1秒</option>
-          <option value="2000">2秒</option>
+          <option value="1000">1秒</option>
+          <option value="2000" selected>2秒</option>
           <option value="4000">4秒</option>
           <option value="8000">8秒</option>
         </select>
