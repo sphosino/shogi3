@@ -29,9 +29,25 @@
     </div>
     <div id="prev-think-panel" style="display:none;font-size:11px;color:#aaa;background:#050510;border:1px solid #1a1a3a;border-radius:4px;padding:5px 8px;margin:2px auto;max-width:600px;font-family:monospace;line-height:1.7;opacity:0.85;height:calc(1.7em * 5 + 10px + 16px);overflow-y:scroll;"></div>
     <div id="canvas-wrap"><canvas id="c"></canvas></div>
+    <!-- 検討モード（review.js） -->
+    <div id="review-panel" style="display:none;background:#070b14;border:1px solid #2c4a5a;border-radius:6px;padding:8px;margin:6px auto;max-width:600px;color:#cde;font-size:12px;">
+      <div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;">
+        <button onclick="showReviewPos(0)" title="最初（Home）">⏮</button>
+        <button onclick="reviewStep(-1)" title="1手戻る（←）">◀</button>
+        <button onclick="reviewStep(1)" title="1手進む（→）">▶</button>
+        <button onclick="showReviewPos(review.pos.length-1)" title="最後（End）">⏭</button>
+        <button id="review-auto" onclick="toggleReviewAuto()" title="学習AIで、この局面の候補手を調べます（考える時間は難易度の秒数）">🧠 解析する</button>
+      </div>
+      <div id="review-pos" style="text-align:center;margin-top:6px;color:#ffd890;"></div>
+      <canvas id="review-graph" width="580" height="110" onclick="rvGraphClick(event)" style="width:100%;margin-top:6px;cursor:pointer;border:1px solid #223;"></canvas>
+      <div id="review-info" style="margin-top:4px;color:#9ab;"></div>
+      <div id="review-cands" style="margin-top:4px;line-height:1.6;font-family:monospace;"></div>
+      <div style="margin-top:4px;color:#678;font-size:11px;">盤の丸：その手の後の手番の人の勝率（上）と、読んだ割合（下）。点線の枠：実際に指された手。棋譜の行やグラフをクリックするとその局面へ。← → キーでも動かせます</div>
+    </div>
     <div id="btnRow">
       <button id="init-btn" onclick="init()">盤面を初期化</button>
       <button id="resign-btn" onclick="resignHuman()" title="脱落扱いになり、残りの2人の対局を観戦します">🏳 投了</button>
+      <button id="review-btn" onclick="toggleReview()" title="棋譜を戻して検討します。学習AIで候補手と勝率も調べられます">🔍 検討</button>
       <button id="copy-kifu-btn" onclick="copyGameRecord()" title="対局の最初の局面と全部の手（学習AIの勝率予想つき）をクリップボードにコピーします">📋 棋譜をコピー</button>
       <button id="hb0" onclick="setHumanPlayerFromEdit(0)" style="background:#6a3500">🔵 青将で対局</button>
       <button id="hb1" onclick="setHumanPlayerFromEdit(1)">🔴 赤将で対局</button>
@@ -155,6 +171,7 @@
 <script src="engine.js"></script>
 <script src="render.js"></script>
 <script src="ui.js"></script>
+<script src="review.js"></script>
 </body>
 </html>
 </html>

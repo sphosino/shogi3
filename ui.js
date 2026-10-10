@@ -10,7 +10,9 @@ function renderKifu(){
   const displayKifu = (selfPlayMode && kifuView !== null) ? kifuView : kifu;
   el.innerHTML=displayKifu.map((k,i)=>{
     const cls=i===displayKifu.length-1?'latest':'';
-    return '<div class="'+cls+'">'+
+    // クリックでその手の局面を検討（review.js）。自己対局中は無効
+    const click = selfPlayMode ? '' : ' onclick="reviewJump('+(i+1)+')" title="この手の局面を検討"';
+    return '<div class="'+cls+'"'+click+'>'+
       '<span style="color:#806040;font-size:10px;">'+(i+1)+'.</span> '+
       '<span style="color:'+k.col+'">'+k.name+'</span> '+
       '<span style="color:#e8d095;">'+k.fugo+'</span>'+
@@ -333,6 +335,7 @@ function handleClick(e){
   const mx=(e.clientX-rect.left)/_s, my=(e.clientY-rect.top)/_s;
 
   if(editMode){ editHandleClick(e); return; }
+  if(typeof reviewMode!=='undefined' && reviewMode) return; // 検討中は駒を動かせない
   if(promoQ){handlePromoClick(mx,my);return;}
   if(gover||turn!==humanPlayer){
     // 自分の番以外のクリックは選択状態をリセットして無視

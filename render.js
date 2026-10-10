@@ -9,6 +9,7 @@ function render(){
 
   drawBoard();
   drawAllPieces();
+  if(typeof reviewMode!=='undefined' && reviewMode) drawReviewOverlay(); // 検討モードの候補手（review.js）
 
   drawAllHands();
   drawPlayerLabels();

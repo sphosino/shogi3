@@ -111,8 +111,13 @@
         const n = w.search_result(ctx);
         const ch = new Int32Array(w.memory.buffer, w.search_children_ptr(ctx), n * 2).slice();
         const value = Array.from(new Float32Array(w.memory.buffer, w.search_value_ptr(ctx), 3));
+        const cv = new Float32Array(w.memory.buffer, w.search_child_values_ptr(ctx), n * 3).slice();
         const kids = [];
-        for (let i = 0; i < n; i++) kids.push({ idx: ch[i * 2], visits: ch[i * 2 + 1] });
+        for (let i = 0; i < n; i++) {
+          // value：その手の後の勝率予想（青・赤・緑。未訪問なら null）
+          const v = cv[i * 3] < 0 ? null : [cv[i * 3], cv[i * 3 + 1], cv[i * 3 + 2]].map((x) => Math.round(x * 1000) / 1000);
+          kids.push({ idx: ch[i * 2], visits: ch[i * 2 + 1], value: v });
+        }
         kids.sort((a, b) => b.visits - a.visits);
         let pick = kids[0];
         if (this.temp > 0 && req.moveCount < this.tempPlies && kids.length > 1 && pick.idx >= 0) {
@@ -123,7 +128,7 @@
         return {
           move: pick.idx < 0 ? null : this.decodeMove(pick.idx),
           value: value.map((x) => Math.round(x * 1000) / 1000),
-          top: kids.slice(0, 5).map((x) => ({ move: x.idx < 0 ? null : this.decodeMove(x.idx), visits: x.visits })),
+          top: kids.slice(0, req.topN || 5).map((x) => ({ move: x.idx < 0 ? null : this.decodeMove(x.idx), visits: x.visits, value: x.value })),
           visits: kids.reduce((a, x) => a + x.visits, 0),
           sec: Math.round(performance.now() - t0) / 1000,
           provider: this.provider,

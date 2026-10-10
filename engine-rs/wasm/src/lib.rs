@@ -64,6 +64,8 @@ pub struct Ctx {
     legal: Vec<i32>,
     l: usize,
     children: Vec<i32>,
+    /// 根の各手の後の価値（3つ組。未訪問なら -1）。search_result で children と同じ順に用意する
+    child_values: Vec<f32>,
     root_value: [f32; 3],
 }
 
@@ -97,6 +99,7 @@ pub unsafe extern "C" fn search_new(state: *const u8, visits: u32, batch: u32, c
         legal: Vec::new(),
         l: 0,
         children: Vec::new(),
+        child_values: Vec::new(),
         root_value: [0.0; 3],
     }))
 }
@@ -173,7 +176,7 @@ pub unsafe extern "C" fn search_submit(ctx: *mut Ctx, priors: *const f32, values
     }
 }
 
-/// 根の各手を (方策番号 or -1, 訪問数) の組で用意して、その数を返す。根の価値も用意する
+/// 根の各手を (方策番号 or -1, 訪問数) の組で用意して、その数を返す。各手の後の価値と根の価値も用意する
 ///
 /// # Safety
 /// ctx は search_new が返したもの
@@ -181,9 +184,11 @@ pub unsafe extern "C" fn search_submit(ctx: *mut Ctx, priors: *const f32, values
 pub unsafe extern "C" fn search_result(ctx: *mut Ctx) -> u32 {
     let c = &mut *ctx;
     c.children.clear();
-    for (m, n) in c.search.root_visit_counts() {
+    c.child_values.clear();
+    for (m, n, v) in c.search.root_children() {
         c.children.push(if m == PASS { -1 } else { policy_index(m) });
         c.children.push(n as i32);
+        c.child_values.extend_from_slice(&v.unwrap_or([-1.0; 3]));
     }
     c.root_value = c.search.root_value();
     (c.children.len() / 2) as u32
@@ -192,6 +197,12 @@ pub unsafe extern "C" fn search_result(ctx: *mut Ctx) -> u32 {
 #[no_mangle]
 pub unsafe extern "C" fn search_children_ptr(ctx: *mut Ctx) -> *const i32 {
     (*ctx).children.as_ptr()
+}
+
+/// search_result の各手の後の価値 f32[n×3]（未訪問の手は -1）
+#[no_mangle]
+pub unsafe extern "C" fn search_child_values_ptr(ctx: *mut Ctx) -> *const f32 {
+    (*ctx).child_values.as_ptr()
 }
 
 #[no_mangle]
