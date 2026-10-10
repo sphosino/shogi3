@@ -53,11 +53,13 @@ function rvApply(p, mv, o, redrawKifu = true) {
 function enterReview() {
   if (reviewMode) return true;
   if (selfPlayMode || editMode) return false;
-  if (!gameRecord || !gameRecord.moves.length) { setStatus('検討できる棋譜がありません'); return false; }
   review.live = { board, hand, eliminated, turn, moveCount, gover, winner, winType, humanEliminated, lastMove, info: rvEl('info').textContent };
   gameGen++;                       // 考え中のAIの手は捨てる（検討をやめたら考え直す）
   selected = null; vmoves = []; selHand = false; promoQ = null;
-  const rec = gameRecord;
+  // まだ1手も指していない（新しい対局で棋譜が空）なら、今の局面を開始局面にする
+  const rec = gameRecord && gameRecord.moves.length && kifu.length ? gameRecord
+    : { start: { board: rvClone(board), hand: rvClone(hand), eliminated: [...eliminated], turn, moveCount, rule: keepAllPieces }, moves: [] };
+  review.rule = rec.start.rule;
   let p = { board: rvClone(rec.start.board), hand: rvClone(rec.start.hand), eliminated: [...rec.start.eliminated], turn: rec.start.turn, moveCount: rec.start.moveCount, lastMove: null, gover: false };
   review.main = [p];
   review.mainMoves = [];
@@ -205,7 +207,7 @@ async function rvAnalyze(force = false) {
       if (p.gover) continue;
       if (review.line[review.idx] === p) rvEl('review-info').textContent = `解析中…（${thinkMs / 1000}秒）`;
       const res = await LocalAI.think({ board: p.board, hand: p.hand, eliminated: p.eliminated, turn: p.turn, moveCount: p.moveCount,
-                                        rule: gameRecord.start.rule, timeMs: thinkMs, topN: 8 });
+                                        rule: review.rule, timeMs: thinkMs, topN: 8 });
       review.analysis[rvKey(p)] = res;
       if (reviewMode && review.line[review.idx] === p) { render(); rvUpdatePanel(); }
       else if (reviewMode) rvDrawGraph();
