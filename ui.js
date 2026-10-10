@@ -335,7 +335,7 @@ function handleClick(e){
   const mx=(e.clientX-rect.left)/_s, my=(e.clientY-rect.top)/_s;
 
   if(editMode){ editHandleClick(e); return; }
-  if(typeof reviewMode!=='undefined' && reviewMode) return; // 検討中は駒を動かせない
+  if(typeof reviewMode!=='undefined' && reviewMode){ reviewClick(mx,my); return; } // 検討中は変化を試す（review.js）
   if(promoQ){handlePromoClick(mx,my);return;}
   if(gover||turn!==humanPlayer){
     // 自分の番以外のクリックは選択状態をリセットして無視

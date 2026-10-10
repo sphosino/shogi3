@@ -127,7 +127,7 @@ function drawAllPieces(){
     }
 
     // 選択中マス（操作プレイヤーの駒のみ）
-    if(!selHand&&selected&&selected[0]===r&&selected[1]===c&&cell?.o===humanPlayer){
+    if(!selHand&&selected&&selected[0]===r&&selected[1]===c&&(cell?.o===humanPlayer||(typeof reviewMode!=='undefined'&&reviewMode))){
       ctx.fillStyle='rgba(255,255,0,0.28)';
       ctx.fillRect(BX+pc*CS+1,BY+pr*CS+1,CS-2,CS-2);
     }

@@ -39,10 +39,12 @@
         <button id="review-auto" onclick="toggleReviewAuto()" title="学習AIで、この局面の候補手を調べます（考える時間は難易度の秒数）">🧠 解析する</button>
       </div>
       <div id="review-pos" style="text-align:center;margin-top:6px;color:#ffd890;"></div>
+      <div id="review-var" style="margin-top:4px;line-height:1.8;"></div>
+      <div id="review-hand" style="margin-top:4px;"></div>
       <canvas id="review-graph" width="580" height="110" onclick="rvGraphClick(event)" style="width:100%;margin-top:6px;cursor:pointer;border:1px solid #223;"></canvas>
       <div id="review-info" style="margin-top:4px;color:#9ab;"></div>
       <div id="review-cands" style="margin-top:4px;line-height:1.6;font-family:monospace;"></div>
-      <div style="margin-top:4px;color:#678;font-size:11px;">盤の丸：その手の後の手番の人の勝率（上）と、読んだ割合（下）。点線の枠：実際に指された手。棋譜の行やグラフをクリックするとその局面へ。← → キーでも動かせます</div>
+      <div style="margin-top:4px;color:#678;font-size:11px;">盤の丸：その手の後の手番の人の勝率（上）と、読んだ割合（下）。点線の枠：この手順で次に指された手。<br>手番の人の駒を動かすと変化を試せます（丸や候補手の行をクリックしてもその手を指します）。棋譜の行やグラフをクリックするとその局面へ。← → キーで移動、Esc で本譜に戻る</div>
     </div>
     <div id="btnRow">
       <button id="init-btn" onclick="init()">盤面を初期化</button>
