@@ -702,6 +702,24 @@ fn apply_policy_index<'py>(py: Python<'py>, state: &[u8], idx: i32) -> PyResult<
     Ok(PyBytes::new_bound(py, &out))
 }
 
+/// 方策の番号の手を指す（-1 はパス）。(後の局面, 終局なら勝者) を返す（分析用：局面の続きを指し継ぐ）
+#[pyfunction]
+fn play_policy_index<'py>(py: Python<'py>, state: &[u8], idx: i32) -> PyResult<(Bound<'py, PyBytes>, Option<u8>)> {
+    let mut p = position_from_state(state)?;
+    let outcome = if idx < 0 {
+        p.pass();
+        None
+    } else {
+        let (to, rest) = ((idx % 81) as usize, (idx / 81) as usize);
+        let (from, pro) = (rest / 2, rest % 2 == 1);
+        let m = if from >= 81 { make_drop((from - 81) as u8, to) } else { make_move(from, to, pro) };
+        p.play(m)
+    };
+    let mut out = Vec::with_capacity(STATE_BYTES);
+    encode_state(&p, &mut out);
+    Ok((PyBytes::new_bound(py, &out), outcome.map(|o| o.winner)))
+}
+
 /// 定数（Python側と揃える）
 #[pyfunction]
 fn constants(py: Python<'_>) -> PyResult<Bound<'_, PyDict>> {
@@ -718,5 +736,6 @@ fn shogi3_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(constants, m)?)?;
     m.add_function(wrap_pyfunction!(king_threats, m)?)?;
     m.add_function(wrap_pyfunction!(apply_policy_index, m)?)?;
+    m.add_function(wrap_pyfunction!(play_policy_index, m)?)?;
     Ok(())
 }
