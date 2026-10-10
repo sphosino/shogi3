@@ -17,7 +17,7 @@
     tempPlies: 15,
 
     async init(opt) {
-      const o = Object.assign({ model: "web/models/pbig2-gen140.onnx", wasm: "web/shogi3_wasm.wasm" }, opt || {});
+      const o = Object.assign({ model: "web/models/pbig2-gen165.onnx", wasm: "web/shogi3_wasm.wasm" }, opt || {});
       const resp = await fetch(o.wasm);
       const { instance } = await WebAssembly.instantiate(await resp.arrayBuffer(), {});
       this.w = instance.exports;
@@ -38,7 +38,7 @@
         } catch (e) { lastErr = e; }
       }
       if (!this.sess) throw lastErr || new Error("ネットを読み込めませんでした");
-      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen140
+      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen165
       if (this.provider === "wasm") { this.visits = o.cpuVisits || 200; this.batch = 4; }
       else { this.visits = o.visits || 800; this.batch = 16; }
       // 準備運転：最初の推論は GPU の準備で遅いので、ここで済ませておく（1手目だけ読みが浅くならないように）
