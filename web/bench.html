@@ -46,12 +46,12 @@
   <p>「800回探索の目安」は、探索で局面を何個ずつまとめて推論できるかによって変わります。1個ずつ（いちばん単純な作り）なら上の段、8〜16個ずつまとめられる作りなら下の段に近づきます。</p>
   <div id="log"></div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.webgpu.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.webgpu.min.js"></script>
 <script src="bench_states.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const log = (s) => { $("log").textContent += s + "\n"; };
-  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
   $("env").textContent = "WebGPU: " + ("gpu" in navigator ? "使える可能性あり" : "このブラウザでは使えません") +
     "　/ CPUのスレッド数: " + (navigator.hardwareConcurrency || "?") +
     (self.crossOriginIsolated ? "" : "（WebAssembly は1スレッドで動きます）");
@@ -59,7 +59,7 @@
   function batch(n) {
     const a = new Uint8Array(n * 109);
     for (let i = 0; i < n; i++) a.set(BENCH_STATES.subarray((i % 64) * 109, (i % 64 + 1) * 109), i * 109);
-    return new ort.Tensor("uint8", a, [n, 109]);
+    return new ort.Tensor("float32", Float32Array.from(a), [n, 109]);
   }
 
   async function measure(sess, n, reps) {

@@ -22,8 +22,13 @@
       const { instance } = await WebAssembly.instantiate(await resp.arrayBuffer(), {});
       this.w = instance.exports;
       const ort = global.ort;
-      ort.env.wasm.wasmPaths = o.ortWasmPaths || "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
-      const providers = ("gpu" in navigator && !o.forceCpu) ? ["webgpu", "wasm"] : ["wasm"];
+      ort.env.wasm.wasmPaths = o.ortWasmPaths || "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+      // GPU が本当に使えるかを先に確かめる（ONNX Runtime Web 1.30.0 では、WebGPU で作るのに失敗すると CPU でも作れなくなるため）
+      let gpuOk = false;
+      if ("gpu" in navigator && !o.forceCpu) {
+        try { gpuOk = !!(await navigator.gpu.requestAdapter()); } catch (e) { gpuOk = false; }
+      }
+      const providers = gpuOk ? ["webgpu", "wasm"] : ["wasm"];
       let lastErr = null;
       for (const p of providers) {
         try {
@@ -36,6 +41,8 @@
       this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen140
       if (this.provider === "wasm") { this.visits = o.cpuVisits || 200; this.batch = 4; }
       else { this.visits = o.visits || 800; this.batch = 16; }
+      // 準備運転：最初の推論は GPU の準備で遅いので、ここで済ませておく（1手目だけ読みが浅くならないように）
+      for (const n of [1, this.batch]) await this.sess.run({ states: new ort.Tensor("float32", new Float32Array(n * 109), [n, 109]) });
       this.ready = true;
       return this.provider;
     },
@@ -77,7 +84,8 @@
           const L = w.search_legal_len(ctx);
           const states = new Uint8Array(w.memory.buffer, w.search_states_ptr(ctx), k * 109).slice();
           const legal = new Int32Array(w.memory.buffer, w.search_legal_ptr(ctx), k * L).slice();
-          const out = await this.sess.run({ states: new ort.Tensor("uint8", states, [k, 109]) });
+          // 入力は float32（ONNX Runtime Web 1.20.1 + uint8 入力では、WebGPU で2局面以上まとめると2つ目以降が壊れた）
+          const out = await this.sess.run({ states: new ort.Tensor("float32", Float32Array.from(states), [k, 109]) });
           const pol = out.policy.data, val = out.value.data, P = out.policy.dims[1];
           const priors = new Float32Array(k * L), values = new Float32Array(k * 3);
           for (let i = 0; i < k; i++) {

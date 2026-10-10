@@ -12,6 +12,11 @@ import torch.nn.functional as F
 from .features import IN_CHANNELS, NUM_POLICY
 
 
+def gpool(x):
+    """盤全体の平均と最大 [N,C,9,9] → [N,2C]（ONNX に書き出すときは export_onnx.py が差し替える）"""
+    return torch.cat([x.mean(dim=(2, 3)), x.amax(dim=(2, 3))], dim=1)
+
+
 class ResBlock(nn.Module):
     def __init__(self, ch: int):
         super().__init__()
@@ -43,7 +48,7 @@ class GlobalPoolBlock(nn.Module):
         y = self.c1(x)
         reg, g = y[:, : -self.gp_ch], y[:, -self.gp_ch :]
         g = F.relu(self.bg(g))
-        pooled = torch.cat([g.mean(dim=(2, 3)), g.amax(dim=(2, 3))], dim=1)
+        pooled = gpool(g)
         reg = F.relu(self.b1(reg) + self.fc(pooled)[:, :, None, None])
         y = self.b2(self.c2(reg))
         return F.relu(x + y)
@@ -83,7 +88,7 @@ class Net(nn.Module):
         h = self.trunk_forward(x)
         policy = self.p2(self.p1(h)).flatten(1)
         v = self.v1(h)
-        v = self.vfc(torch.cat([v.mean(dim=(2, 3)), v.amax(dim=(2, 3))], dim=1))
+        v = self.vfc(gpool(v))
         out = {"policy": policy, "value": self.value(v)}
         if aux:
             out.update(
