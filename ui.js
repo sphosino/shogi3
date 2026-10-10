@@ -304,6 +304,7 @@ function copyGameRecord(){
   const rec = {
     version: 1,
     difficulty: currentDifficulty,
+    netTimeMs,
     model: (window.LocalAI && LocalAI.ready) ? LocalAI.model : null,
     human: humanPlayer,
     start: gameRecord ? gameRecord.start : null,
@@ -723,7 +724,13 @@ function setDifficulty(level){
   });
   // 難易度ラベル更新
   const lbl = document.getElementById('diff-label');
-  if(lbl) lbl.textContent = cfg.emoji+' 難易度: '+cfg.label;
+  if(lbl) lbl.textContent = cfg.emoji+' 難易度: '+cfg.label+(cfg.net ? '（'+netTimeMs/1000+'秒）' : '');
+}
+
+// 学習AIが1手に考える時間（ミリ秒）
+function setNetTime(ms){
+  netTimeMs = Number(ms) || 1000;
+  setDifficulty(currentDifficulty);
 }
 
 window.addEventListener('DOMContentLoaded', () => {

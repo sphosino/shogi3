@@ -77,7 +77,7 @@ async function askNet(req){
       try{
         setStatus('学習AIを準備中…（初回だけ数秒かかります）');
         const p=await LocalAI.init();
-        console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、1手'+LocalAI.visits+'回探索、重み '+LocalAI.model+'）');
+        console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、重み '+LocalAI.model+'）');
       }catch(e){
         LocalAI.failed=true;
         console.warn('ブラウザ内の学習AIを使えないので、サーバーに問い合わせます:', e);
@@ -90,14 +90,13 @@ async function askNet(req){
 }
 
 function netMove(_g){
-  const cfg=DIFFICULTY_LEVELS[currentDifficulty];
-  const req={board, hand, eliminated, turn, moveCount, rule:keepAllPieces, visits:cfg.visits};
+  const req={board, hand, eliminated, turn, moveCount, rule:keepAllPieces, timeMs:netTimeMs};
   askNet(req)
     .then(res=>{
       if(_g!==gameGen||gover) return;
       if(res.error) throw new Error(res.error);
       const v=res.value.map(x=>Math.round(x*100));
-      console.log(`学習AI ${PNAME_BASE[turn]}: 勝率予想 青${v[0]}% 赤${v[1]}% 緑${v[2]}%（${res.sec}秒）`, res.top);
+      console.log(`学習AI ${PNAME_BASE[turn]}: 勝率予想 青${v[0]}% 赤${v[1]}% 緑${v[2]}%（${res.sec}秒、${res.visits}回探索）`, res.top);
       if(res.move){ applyMove(res.move,turn); if(gameRecord&&gameRecord.moves.length) gameRecord.moves[gameRecord.moves.length-1].v=res.value; render(); }
       if(!gover) nextTurn(board);
     })

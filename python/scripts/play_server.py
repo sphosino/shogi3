@@ -79,7 +79,9 @@ class Engine:
         self.lock = threading.Lock()
 
     def think(self, req):
-        visits = max(1, min(int(req.get("visits", 800)), 20000))
+        # timeMs（ミリ秒）があれば、その時間いっぱい探索する（上限 100000 回）。なければ visits 回
+        time_ms = float(req.get("timeMs") or 0)
+        visits = 100000 if time_ms > 0 else max(1, min(int(req.get("visits", 800)), 20000))
         s = shogi3_rs.Searcher(encode(req), visits=visits)
         t = time.time()
         with self.lock:
@@ -92,6 +94,8 @@ class Engine:
                 legal = torch.from_numpy(np.frombuffer(legal_b, dtype=np.int32).astype(np.int64)).view(1, -1).to(self.device)
                 p, v = evaluate_batch(self.model, st, legal)
                 s.submit(p[0].cpu().tolist(), v[0].cpu().tolist())
+                if time_ms > 0 and (time.time() - t) * 1000 >= time_ms:
+                    break
         best, counts, value = s.result()
         counts = sorted(counts, key=lambda x: -x[1])
         if self.temp > 0 and int(req["moveCount"]) < self.temp_plies and counts and counts[0][0] != PASS:
@@ -102,7 +106,7 @@ class Engine:
             "move": None if best == PASS else decode_move(best, req["board"]),
             "value": [round(x, 3) for x in value],
             "top": [{"move": None if m == PASS else decode_move(m, req["board"]), "visits": n} for m, n in counts[:5]],
-            "visits": visits,
+            "visits": sum(n for _, n in counts),
             "sec": round(time.time() - t, 2),
         }
 

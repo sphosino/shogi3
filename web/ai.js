@@ -60,12 +60,14 @@
       return { fr: Math.floor(from / 9), fc: from % 9, tr: Math.floor(to / 9), tc: to % 9, pro };
     },
 
+    // req.timeMs があれば、その時間いっぱい探索する（なければ this.visits 回）
     async think(req) {
       const w = this.w, ort = global.ort, t0 = performance.now();
+      const timed = req.timeMs > 0;
       const st = this.encode(req);
       const sp = w.alloc(109);
       new Uint8Array(w.memory.buffer, sp, 109).set(st);
-      const ctx = w.search_new(sp, this.visits, this.batch, 1.5);
+      const ctx = w.search_new(sp, timed ? 100000 : this.visits, this.batch, 1.5);
       w.dealloc(sp, 109);
       let bufP = 0, bufV = 0, capP = 0, capV = 0;
       try {
@@ -96,6 +98,7 @@
           new Float32Array(w.memory.buffer, bufP, priors.length).set(priors);
           new Float32Array(w.memory.buffer, bufV, values.length).set(values);
           w.search_submit(ctx, bufP, bufV);
+          if (timed && performance.now() - t0 >= req.timeMs) break;
         }
         const n = w.search_result(ctx);
         const ch = new Int32Array(w.memory.buffer, w.search_children_ptr(ctx), n * 2).slice();
@@ -113,7 +116,7 @@
           move: pick.idx < 0 ? null : this.decodeMove(pick.idx),
           value: value.map((x) => Math.round(x * 1000) / 1000),
           top: kids.slice(0, 5).map((x) => ({ move: x.idx < 0 ? null : this.decodeMove(x.idx), visits: x.visits })),
-          visits: this.visits,
+          visits: kids.reduce((a, x) => a + x.visits, 0),
           sec: Math.round(performance.now() - t0) / 1000,
           provider: this.provider,
         };
