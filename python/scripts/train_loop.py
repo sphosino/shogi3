@@ -54,6 +54,9 @@ def parse():
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり / mix=3つを均等に混ぜる）")
     p.add_argument("--past-prob", type=float, default=0.0, help="自己対局のうち過去の世代を混ぜる対局の割合（半分は 現世代2+過去1、半分は 現世代1+過去2）")
+    p.add_argument("--weak-models", nargs="*", default=[], help="自己対局に混ぜる弱いモデル（実行名:世代。例 pbig2:1 pmix:81）。1世代に1つを順番に使う")
+    p.add_argument("--weak1-prob", type=float, default=0.0, help="自己対局のうち、弱いモデル1体（現世代2体）の対局の割合")
+    p.add_argument("--weak2-prob", type=float, default=0.0, help="自己対局のうち、弱いモデル2体（現世代1体）の対局の割合")
     p.add_argument("--gift-prob", type=float, default=0.0, help="自己対局のうち、途中（20〜120手目）で1人に他の人の駒を5〜20枚渡して大差の局面を作る対局の割合")
     p.add_argument("--past-start", type=int, default=21, help="過去の世代の候補：この世代から")
     p.add_argument("--past-every", type=int, default=10, help="過去の世代の候補：この間隔ごと")
@@ -75,14 +78,15 @@ def scaffold_worker(args):
     return d.take_finished()
 
 
-def past_summary(d: dict) -> str:
-    """過去の世代を混ぜた対局での、現世代の勝率（1体のとき・2体のとき）"""
+def past_summary(d: dict, ids=None) -> str:
+    """過去の世代（や弱いモデル）を混ぜた対局での、現世代の勝率（1体のとき・2体のとき）。ids：集計する相手のネット番号（省略時は全部）"""
     sn = d["g_seat_net"].astype(np.int64)  # 対局×3席のネット番号（0=現世代）
     n0 = (sn == 0).sum(1)
     won = sn[np.arange(len(sn)), d["g_winner"].astype(np.int64)] == 0
+    sel = np.ones(len(sn), dtype=bool) if ids is None else np.isin(sn, list(ids)).any(1)
     parts = []
     for k, name in ((2, "現世代2体"), (1, "現世代1体")):
-        m = n0 == k
+        m = (n0 == k) & sel
         if m.any():
             parts.append(f"{name} {int(m.sum())}局 現世代の勝率 {won[m].mean()*100:.1f}%（互角なら{k/3*100:.0f}%）")
     return " / ".join(parts)
@@ -218,15 +222,33 @@ def main():
                 if g not in past_cache:
                     past_cache[g] = M.load(model_path(g), device).eval()
                 models[i + 1] = past_cache[g]
-                alt += [["net:0", "net:0", f"net:{i + 1}"], ["net:0", f"net:{i + 1}", f"net:{i + 1}"]]
+        # 混ぜる対局の種類と割合。Driver は alt_seats から等しい確率で選ぶので、割合に比例した数だけ並べる（0.5%単位）
+        weighted = []
+        past_ids = [i for i in models if i > 0]
+        for i in past_ids:
+            w = a.past_prob / 2 / len(past_ids)
+            weighted += [(["net:0", "net:0", f"net:{i}"], w), (["net:0", f"net:{i}", f"net:{i}"], w)]
+        weak = None
+        if a.weak_models and (a.weak1_prob > 0 or a.weak2_prob > 0):
+            weak = a.weak_models[gen % len(a.weak_models)]
+            if weak not in past_cache:
+                run2, g2 = weak.split(":")
+                past_cache[weak] = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
+            wi = len(models)
+            models[wi] = past_cache[weak]
+            weighted += [(["net:0", "net:0", f"net:{wi}"], a.weak1_prob), (["net:0", f"net:{wi}", f"net:{wi}"], a.weak2_prob)]
+        alt = [s for s, w in weighted for _ in range(int(round(w / 0.005)))]
+        alt_prob = sum(w for _, w in weighted)
         drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
                                visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
-                               seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=a.past_prob if alt else 0.0,
+                               seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=alt_prob if alt else 0.0,
                                gift_prob=a.gift_prob)
         stats = {}
         d = D.decode(run_driver(drv, models, device, stats))
-        if alt:
-            log(f"  過去の世代 {pool} を混ぜた対局: {past_summary(d)}")
+        if past_ids:
+            log(f"  過去の世代 {pool} を混ぜた対局: {past_summary(d, past_ids)}")
+        if weak:
+            log(f"  弱いモデル {weak} を混ぜた対局: {past_summary(d, [wi])}")
         D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
         log(f"  自己対局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
         # 過学習の監視：まだ学習に使っていない、今の自己対局のデータで価値を測る
