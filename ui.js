@@ -61,7 +61,7 @@ function setHumanPlayer(p){
 function setSelfPlayDiffBtns(locked){
   // 自己対局中はプレイヤー選択・難易度・共闘・盤面初期化ボタンを無効化
   ['init-btn',
-   'diff-cpu','diff-net','think-time',
+   'diff-cpu','diff-net','think-time','review-btn','load-kifu-btn',
    'col-on','col-off', 'sp-btn',
    'hb0','hb1','hb2'].forEach(id=>{
     const btn=document.getElementById(id);

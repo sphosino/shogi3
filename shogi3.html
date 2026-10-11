@@ -29,6 +29,16 @@
     </div>
     <div id="prev-think-panel" style="display:none;font-size:11px;color:#aaa;background:#050510;border:1px solid #1a1a3a;border-radius:4px;padding:5px 8px;margin:2px auto;max-width:600px;font-family:monospace;line-height:1.7;opacity:0.85;height:calc(1.7em * 5 + 10px + 16px);overflow-y:scroll;"></div>
     <div id="canvas-wrap"><canvas id="c"></canvas></div>
+    <!-- 棋譜の読み込み（review.js） -->
+    <div id="load-kifu" style="display:none;background:#0b0f18;border:1px solid #4a6a8a;border-radius:6px;padding:10px;margin:6px auto;max-width:600px;color:#cde;font-size:12px;">
+      <div style="margin-bottom:6px;">「📋 棋譜をコピー」で出てきた文字を、下の欄にそのまま貼り付けてください。</div>
+      <textarea id="load-kifu-text" rows="5" style="width:100%;box-sizing:border-box;background:#05080e;color:#cde;border:1px solid #345;font-family:monospace;font-size:11px;"></textarea>
+      <div style="text-align:center;margin-top:6px;">
+        <button onclick="loadGameRecordText(document.getElementById('load-kifu-text').value)" style="background:#0a2a14;border:1px solid #3c8;color:#9fd;padding:3px 14px;border-radius:4px;cursor:pointer;">読み込む</button>
+        <button onclick="pasteLoadKifu()" style="background:#0a1420;border:1px solid #556;color:#cde;padding:3px 10px;border-radius:4px;cursor:pointer;">クリップボードから</button>
+        <button onclick="closeLoadKifu()" style="background:#1a0a0a;border:1px solid #844;color:#d99;padding:3px 10px;border-radius:4px;cursor:pointer;">やめる</button>
+      </div>
+    </div>
     <!-- 検討モード（review.js） -->
     <div id="review-panel" style="display:none;background:#070b14;border:1px solid #2c4a5a;border-radius:6px;padding:8px;margin:6px auto;max-width:600px;color:#cde;font-size:12px;">
       <div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;">
@@ -50,6 +60,7 @@
       <button id="init-btn" onclick="init()">盤面を初期化</button>
       <button id="resign-btn" onclick="resignHuman()" title="脱落扱いになり、残りの2人の対局を観戦します">🏳 投了</button>
       <button id="review-btn" onclick="toggleReview()" title="棋譜を戻して検討します。学習AIで候補手と勝率も調べられます">🔍 検討</button>
+      <button id="load-kifu-btn" onclick="openLoadKifu()" title="「📋 棋譜をコピー」で出てきた棋譜を貼り付けて読み込み、検討します">📥 棋譜を読み込む</button>
       <button id="copy-kifu-btn" onclick="copyGameRecord()" title="対局の最初の局面と全部の手（学習AIの勝率予想つき）をクリップボードにコピーします">📋 棋譜をコピー</button>
       <button id="hb0" onclick="setHumanPlayerFromEdit(0)" style="background:#6a3500">🔵 青将で対局</button>
       <button id="hb1" onclick="setHumanPlayerFromEdit(1)">🔴 赤将で対局</button>

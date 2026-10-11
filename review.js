@@ -394,6 +394,68 @@ function rvGraphClick(e) {
   showReviewPos(Math.round(((e.clientX - r.left) / r.width * cv.width - 4) / (cv.width - 8) * N));
 }
 
+// ── 棋譜の読み込み（「📋 棋譜をコピー」の形：{start, moves:[{o, mv, v?} | {o, resign}], human?, ...}）──
+function openLoadKifu() {
+  if (selfPlayMode) { setStatus('自己対局中は棋譜を読み込めません'); return; }
+  rvEl('load-kifu').style.display = '';
+  rvEl('load-kifu-text').value = '';
+  rvEl('load-kifu-text').focus();
+}
+function closeLoadKifu() { rvEl('load-kifu').style.display = 'none'; }
+async function pasteLoadKifu() {
+  try { rvEl('load-kifu-text').value = await navigator.clipboard.readText(); }
+  catch (e) { alert('クリップボードを読めませんでした。欄に直接貼り付けてください'); }
+}
+
+function loadGameRecordText(text) {
+  let rec;
+  try { rec = JSON.parse(text.trim()); } catch (e) { alert('読み込めません：「📋 棋譜をコピー」で出てくる形（JSON）ではありません'); return false; }
+  if (!rec || !rec.start || !rec.start.board || !Array.isArray(rec.moves)) { alert('読み込めません：start（最初の局面）と moves（指し手）が必要です'); return false; }
+  if (editMode) toggleEditMode();
+  if (reviewMode) exitReview(false);
+  gameGen++;                                  // 考え中のAIの手は捨てる
+  setKeepAllPieces(rec.start.rule === undefined ? 'all' : rec.start.rule);
+  if (typeof rec.human === 'number') {        // 「あなた」の席も棋譜のとおりに（対局は始めない）
+    humanPlayer = rec.human; viewPlayer = rec.human;
+    [0, 1, 2].forEach((i) => { PNAME[i] = PNAME_BASE[i]; const b = rvEl('hb' + i); if (b) b.style.background = i === rec.human ? '#6a3500' : '#3a1500'; });
+    PNAME[rec.human] = PNAME_BASE[rec.human] + '(あなた)';
+  }
+  const s = rvClone(rec.start);
+  board = s.board; hand = s.hand; eliminated = s.eliminated; turn = s.turn; moveCount = s.moveCount || 0;
+  gover = false; winner = -1; winType = 'normal'; lastMove = null; humanEliminated = !!eliminated[humanPlayer];
+  kifu = []; gameRecord = null;
+  selected = null; vmoves = []; selHand = false; promoQ = null;
+  let n = 0;
+  try {
+    for (const m of rec.moves) {
+      if (gover) break;
+      turn = m.o;
+      if (m.resign) {
+        if (!gameRecord) gameRecord = { start: rvClone({ board, hand, eliminated, turn, moveCount, rule: keepAllPieces }), moves: [] };
+        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) { const x = board[r][c]; if (x && x.o === m.o && x.p === 'OU') board[r][c] = null; }
+        eliminated[m.o] = true;
+        if (m.o === humanPlayer) humanEliminated = true;
+        gameRecord.moves.push({ o: m.o, resign: true });
+        kifu.push({ fugo: '投了', col: PCOL[m.o], name: PNAME_BASE[m.o] });
+        const alive = [0, 1, 2].filter((i) => !eliminated[i]);
+        if (alive.length <= 1) { gover = true; winner = alive[0]; }
+      } else {
+        applyMove(m.mv, m.o);
+        if (m.v) gameRecord.moves[gameRecord.moves.length - 1].v = m.v;
+      }
+      if (!gover) turn = nextAliveOn(eliminated, turn);
+      n++;
+    }
+  } catch (e) {
+    alert(`${n + 1}手目で読み込めなくなりました（${e.message}）。そこまでを読み込みます`);
+  }
+  renderKifu(); render();
+  setStatus(`📥 棋譜を読み込みました（${n}手）` + (gover ? '　終局' : `　${PNAME_BASE[turn]}の番`));
+  closeLoadKifu();
+  if (n > 0 || gameRecord) enterReview();
+  return true;
+}
+
 // ── 対局の操作をする前に、検討をやめて元の局面に戻す ──
 ['init', 'setHumanPlayer', 'setHumanPlayerFromEdit', 'toggleEditMode', 'toggleSelfPlay', 'resignHuman'].forEach((name) => {
   const orig = window[name];
