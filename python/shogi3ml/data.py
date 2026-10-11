@@ -38,12 +38,39 @@ _DTYPES = {
     "g_seat_net": (np.int8, (-1, 3)),
     "g_moves_offsets": (np.int64, (-1,)),
     "g_moves": (np.uint16, (-1,)),
+    "g_rand": (np.uint16, (-1,)),      # 最初にランダムに指した手数（ランダム局面から始めた対局。0 = ふつう）
 }
+
+_POS_KEYS = ["states", "full", "winner", "rank", "next_elim", "root_value", "loss20", "final_material", "st6", "st16", "remaining", "game_id"]
+_GAME_KEYS = ["g_id", "g_winner", "g_kind", "g_plies", "g_rule", "g_seat_net", "g_rand"]
+
+
+def subset_games(d: dict, keep: np.ndarray) -> dict:
+    """対局（g_*）のうち keep が True のものと、その局面だけを取り出す（offsets も作り直す）"""
+    out = {k: d[k][keep] for k in _GAME_KEYS}
+    pos = np.nonzero(np.isin(d["game_id"], d["g_id"][keep]))[0]
+    for k in _POS_KEYS:
+        out[k] = d[k][pos]
+
+    def take(offs, vals_keys, rows):
+        a, b = offs[rows], offs[rows + 1]
+        lens = b - a
+        new_offs = np.concatenate([[0], np.cumsum(lens)]).astype(np.int64)
+        idx = np.repeat(a - new_offs[:-1], lens) + np.arange(new_offs[-1]) if len(rows) else np.zeros(0, dtype=np.int64)
+        return new_offs, {k: d[k][idx] for k in vals_keys}
+    out["policy_offsets"], vals = take(d["policy_offsets"], ["policy_index", "policy_visits"], pos)
+    out.update(vals)
+    out["g_moves_offsets"], vals = take(d["g_moves_offsets"], ["g_moves"], np.nonzero(keep)[0])
+    out.update(vals)
+    return out
 
 
 def decode(d: dict) -> dict:
     """Driver.take_finished() の bytes の dict → numpy の dict"""
-    return {k: np.frombuffer(v, dtype=_DTYPES[k][0]).reshape(_DTYPES[k][1]) for k, v in d.items()}
+    out = {k: np.frombuffer(v, dtype=_DTYPES[k][0]).reshape(_DTYPES[k][1]) for k, v in d.items()}
+    if "g_rand" not in out:   # g_rand を出さない古い Driver
+        out["g_rand"] = np.zeros(len(out["g_winner"]), dtype=np.uint16)
+    return out
 
 
 def merge(parts: list[dict]) -> dict:
@@ -76,6 +103,8 @@ def load_shard(path: str) -> dict:
         d["states"] = np.concatenate([d["states"], np.zeros((len(d["states"]), 1), dtype=np.uint8)], axis=1)
     if "g_rule" not in d:
         d["g_rule"] = np.zeros(len(d["g_winner"]), dtype=np.uint8)
+    if "g_rand" not in d:
+        d["g_rand"] = np.zeros(len(d["g_winner"]), dtype=np.uint16)
     return d
 
 
