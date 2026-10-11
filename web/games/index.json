@@ -808,5 +808,905 @@
 "winner": 0,
 "plies": 177,
 "end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0018",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0018.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代197",
+"pbig2 世代181",
+"pbig2 世代181"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 169,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0032",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0032.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 67,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0044",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0044.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 188,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0036",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0036.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代197",
+"pbig2 世代181",
+"pbig2 世代181"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 102,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0031",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0031.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 120,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0016",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0016.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0027",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0027.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代197",
+"pbig2 世代181",
+"pbig2 世代181"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 208,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0014",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0014.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0017",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0017.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 1,
+"plies": 341,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0046",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0046.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 265,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0048",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0048.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代197",
+"pbig2 世代181",
+"pbig2 世代181"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 93,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0052",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0052.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0020",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0020.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0003",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0003.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代197",
+"pbig2 世代181",
+"pbig2 世代181"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 231,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0051",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0051.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代197",
+"pbig2 世代181",
+"pbig2 世代181"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 373,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0010",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0010.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 195,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0004",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0004.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 171,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0035",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0035.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 148,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0038",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0038.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代181",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 150,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-181_mix_s101-g0049",
+"file": "rating/pbig2-gen197_vs_gen-181_mix_s101-g0049.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代181",
+"players": [
+"pbig2 世代181",
+"pbig2 世代197",
+"pbig2 世代181"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 151,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0002",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0002.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代165",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 171,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0048",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0048.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 143,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0006",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0006.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 202,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0009",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0009.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 107,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0032",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0032.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代165",
+"pbig2 世代197"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 249,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0015",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0015.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 115,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0054",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0054.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0040",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0040.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 389,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0052",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0052.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 192,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0055",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0055.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 157,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0049",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0049.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 231,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0044",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0044.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代165",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 142,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0011",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0011.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代165",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0057",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0057.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 86,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0026",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0026.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代165",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 182,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0000",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0000.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代197",
+"pbig2 世代165",
+"pbig2 世代165"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 226,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0031",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0031.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 141,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0025",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0025.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 197,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0029",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0029.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代165",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 96,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-165_mix_s101-g0004",
+"file": "rating/pbig2-gen197_vs_gen-165_mix_s101-g0004.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代165",
+"players": [
+"pbig2 世代165",
+"pbig2 世代197",
+"pbig2 世代165"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 89,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0019",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0019.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代197",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 131,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0014",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0014.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 110,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0042",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0042.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代197",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 105,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0028",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0028.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代197",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 89,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0059",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0059.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 62,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0053",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0053.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 1,
+"plies": 146,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0054",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0054.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代197",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 133,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0039",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0039.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代197",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 102,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0043",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0043.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代197",
+"pbig2 世代101"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 114,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0000",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0000.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代197",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 122,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0058",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0058.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代197",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 70,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0035",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0035.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 119,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0011",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0011.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 235,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0049",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0049.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代197",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0026",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0026.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0020",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0020.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 61,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0030",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0030.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代197",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 160,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0044",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0044.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代197"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 131,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0036",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0036.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代197",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 500,
+"end": "500手"
+},
+{
+"id": "pbig2-gen197_vs_gen-101_mix_s101-g0031",
+"file": "rating/pbig2-gen197_vs_gen-101_mix_s101-g0031.json",
+"kind": "rating",
+"title": "pbig2 世代197 vs pbig2 世代101",
+"players": [
+"pbig2 世代101",
+"pbig2 世代197",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 63,
+"end": "入玉"
 }
 ]
