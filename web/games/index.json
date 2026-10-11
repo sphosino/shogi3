@@ -1,0 +1,812 @@
+[
+{
+"id": "pbig2-gen0001-g0153",
+"file": "train/pbig2-gen0001-g0153.json",
+"kind": "train",
+"title": "pbig2 世代1 の自己対局",
+"players": [
+"pbig2 世代1",
+"pbig2 世代1",
+"pbig2 世代1"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 116,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0001-g0930",
+"file": "train/pbig2-gen0001-g0930.json",
+"kind": "train",
+"title": "pbig2 世代1 の自己対局",
+"players": [
+"pbig2 世代1",
+"pbig2 世代1",
+"pbig2 世代1"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 128,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0001-g0764",
+"file": "train/pbig2-gen0001-g0764.json",
+"kind": "train",
+"title": "pbig2 世代1 の自己対局",
+"players": [
+"pbig2 世代1",
+"pbig2 世代1",
+"pbig2 世代1"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 96,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0001-g0065",
+"file": "train/pbig2-gen0001-g0065.json",
+"kind": "train",
+"title": "pbig2 世代1 の自己対局",
+"players": [
+"pbig2 世代1",
+"pbig2 世代1",
+"pbig2 世代1"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 148,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0001-g0922",
+"file": "train/pbig2-gen0001-g0922.json",
+"kind": "train",
+"title": "pbig2 世代1 の自己対局",
+"players": [
+"pbig2 世代1",
+"pbig2 世代1",
+"pbig2 世代1"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 128,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0001-g0548",
+"file": "train/pbig2-gen0001-g0548.json",
+"kind": "train",
+"title": "pbig2 世代1 の自己対局",
+"players": [
+"pbig2 世代1",
+"pbig2 世代1",
+"pbig2 世代1"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 83,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0021-g0002",
+"file": "train/pbig2-gen0021-g0002.json",
+"kind": "train",
+"title": "pbig2 世代21 の自己対局",
+"players": [
+"pbig2 世代21",
+"pbig2 世代21",
+"pbig2 世代21"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 66,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0021-g0561",
+"file": "train/pbig2-gen0021-g0561.json",
+"kind": "train",
+"title": "pbig2 世代21 の自己対局",
+"players": [
+"pbig2 世代21",
+"pbig2 世代21",
+"pbig2 世代21"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 112,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0021-g0701",
+"file": "train/pbig2-gen0021-g0701.json",
+"kind": "train",
+"title": "pbig2 世代21 の自己対局",
+"players": [
+"pbig2 世代21",
+"pbig2 世代21",
+"pbig2 世代21"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 149,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0021-g0163",
+"file": "train/pbig2-gen0021-g0163.json",
+"kind": "train",
+"title": "pbig2 世代21 の自己対局",
+"players": [
+"pbig2 世代21",
+"pbig2 世代21",
+"pbig2 世代21"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 67,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0021-g0174",
+"file": "train/pbig2-gen0021-g0174.json",
+"kind": "train",
+"title": "pbig2 世代21 の自己対局",
+"players": [
+"pbig2 世代21",
+"pbig2 世代21",
+"pbig2 世代21"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 215,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0021-g0539",
+"file": "train/pbig2-gen0021-g0539.json",
+"kind": "train",
+"title": "pbig2 世代21 の自己対局",
+"players": [
+"過去の世代",
+"pbig2 世代21",
+"過去の世代"
+],
+"rule": "消滅あり",
+"winner": 1,
+"plies": 42,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0041-g0909",
+"file": "train/pbig2-gen0041-g0909.json",
+"kind": "train",
+"title": "pbig2 世代41 の自己対局",
+"players": [
+"pbig2 世代41",
+"pbig2 世代41",
+"pbig2 世代41"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 117,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0041-g0543",
+"file": "train/pbig2-gen0041-g0543.json",
+"kind": "train",
+"title": "pbig2 世代41 の自己対局",
+"players": [
+"pbig2 世代41",
+"pbig2 世代41",
+"pbig2 世代41"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 107,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0041-g0106",
+"file": "train/pbig2-gen0041-g0106.json",
+"kind": "train",
+"title": "pbig2 世代41 の自己対局",
+"players": [
+"pbig2 世代41",
+"pbig2 世代41",
+"pbig2 世代41"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 223,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0041-g0046",
+"file": "train/pbig2-gen0041-g0046.json",
+"kind": "train",
+"title": "pbig2 世代41 の自己対局",
+"players": [
+"pbig2 世代41",
+"pbig2 世代41",
+"pbig2 世代41"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 108,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0041-g0849",
+"file": "train/pbig2-gen0041-g0849.json",
+"kind": "train",
+"title": "pbig2 世代41 の自己対局",
+"players": [
+"pbig2 世代41",
+"pbig2 世代41",
+"pbig2 世代41"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 109,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0041-g0213",
+"file": "train/pbig2-gen0041-g0213.json",
+"kind": "train",
+"title": "pbig2 世代41 の自己対局",
+"players": [
+"pbig2 世代41",
+"pbig2 世代41",
+"pbig2 世代41"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 87,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0061-g0576",
+"file": "train/pbig2-gen0061-g0576.json",
+"kind": "train",
+"title": "pbig2 世代61 の自己対局",
+"players": [
+"pbig2 世代61",
+"pbig2 世代61",
+"pbig2 世代61"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 137,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0061-g0563",
+"file": "train/pbig2-gen0061-g0563.json",
+"kind": "train",
+"title": "pbig2 世代61 の自己対局",
+"players": [
+"pbig2 世代61",
+"pbig2 世代61",
+"pbig2 世代61"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 115,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0061-g0322",
+"file": "train/pbig2-gen0061-g0322.json",
+"kind": "train",
+"title": "pbig2 世代61 の自己対局",
+"players": [
+"pbig2 世代61",
+"pbig2 世代61",
+"pbig2 世代61"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 190,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0061-g0189",
+"file": "train/pbig2-gen0061-g0189.json",
+"kind": "train",
+"title": "pbig2 世代61 の自己対局",
+"players": [
+"pbig2 世代61",
+"過去の世代",
+"pbig2 世代61"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 175,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0061-g0813",
+"file": "train/pbig2-gen0061-g0813.json",
+"kind": "train",
+"title": "pbig2 世代61 の自己対局",
+"players": [
+"過去の世代",
+"pbig2 世代61",
+"過去の世代"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 124,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0061-g0188",
+"file": "train/pbig2-gen0061-g0188.json",
+"kind": "train",
+"title": "pbig2 世代61 の自己対局",
+"players": [
+"pbig2 世代61",
+"pbig2 世代61",
+"pbig2 世代61"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 214,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0081-g0848",
+"file": "train/pbig2-gen0081-g0848.json",
+"kind": "train",
+"title": "pbig2 世代81 の自己対局",
+"players": [
+"pbig2 世代81",
+"pbig2 世代81",
+"pbig2 世代81"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 270,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0081-g0624",
+"file": "train/pbig2-gen0081-g0624.json",
+"kind": "train",
+"title": "pbig2 世代81 の自己対局",
+"players": [
+"pbig2 世代81",
+"pbig2 世代81",
+"pbig2 世代81"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 178,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0081-g0521",
+"file": "train/pbig2-gen0081-g0521.json",
+"kind": "train",
+"title": "pbig2 世代81 の自己対局",
+"players": [
+"pbig2 世代81",
+"pbig2 世代81",
+"pbig2 世代81"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 232,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0081-g0828",
+"file": "train/pbig2-gen0081-g0828.json",
+"kind": "train",
+"title": "pbig2 世代81 の自己対局",
+"players": [
+"pbig2 世代81",
+"pbig2 世代81",
+"pbig2 世代81"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 153,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0081-g0372",
+"file": "train/pbig2-gen0081-g0372.json",
+"kind": "train",
+"title": "pbig2 世代81 の自己対局",
+"players": [
+"pbig2 世代81",
+"pbig2 世代81",
+"pbig2 世代81"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 121,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0081-g0242",
+"file": "train/pbig2-gen0081-g0242.json",
+"kind": "train",
+"title": "pbig2 世代81 の自己対局",
+"players": [
+"pbig2 世代81",
+"pbig2 世代81",
+"pbig2 世代81"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 276,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0101-g0747",
+"file": "train/pbig2-gen0101-g0747.json",
+"kind": "train",
+"title": "pbig2 世代101 の自己対局",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 184,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0101-g0922",
+"file": "train/pbig2-gen0101-g0922.json",
+"kind": "train",
+"title": "pbig2 世代101 の自己対局",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 107,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0101-g0853",
+"file": "train/pbig2-gen0101-g0853.json",
+"kind": "train",
+"title": "pbig2 世代101 の自己対局",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 119,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0101-g0234",
+"file": "train/pbig2-gen0101-g0234.json",
+"kind": "train",
+"title": "pbig2 世代101 の自己対局",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 58,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0101-g0480",
+"file": "train/pbig2-gen0101-g0480.json",
+"kind": "train",
+"title": "pbig2 世代101 の自己対局",
+"players": [
+"pbig2 世代101",
+"pbig2 世代101",
+"pbig2 世代101"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 108,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0101-g0708",
+"file": "train/pbig2-gen0101-g0708.json",
+"kind": "train",
+"title": "pbig2 世代101 の自己対局",
+"players": [
+"pbig2 世代101",
+"過去の世代",
+"pbig2 世代101"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 176,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0121-g0020",
+"file": "train/pbig2-gen0121-g0020.json",
+"kind": "train",
+"title": "pbig2 世代121 の自己対局",
+"players": [
+"pbig2 世代121",
+"pbig2 世代121",
+"pbig2 世代121"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 61,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0121-g0867",
+"file": "train/pbig2-gen0121-g0867.json",
+"kind": "train",
+"title": "pbig2 世代121 の自己対局",
+"players": [
+"pbig2 世代121",
+"pbig2 世代121",
+"pbig2 世代121"
+],
+"rule": "お裾分け",
+"winner": 1,
+"plies": 159,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0121-g0467",
+"file": "train/pbig2-gen0121-g0467.json",
+"kind": "train",
+"title": "pbig2 世代121 の自己対局",
+"players": [
+"pbig2 世代121",
+"pbig2 世代121",
+"pbig2 世代121"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 221,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0121-g0028",
+"file": "train/pbig2-gen0121-g0028.json",
+"kind": "train",
+"title": "pbig2 世代121 の自己対局",
+"players": [
+"pbig2 世代121",
+"pbig2 世代121",
+"pbig2 世代121"
+],
+"rule": "全部持ち駒",
+"winner": 1,
+"plies": 154,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0121-g0786",
+"file": "train/pbig2-gen0121-g0786.json",
+"kind": "train",
+"title": "pbig2 世代121 の自己対局",
+"players": [
+"pbig2 世代121",
+"pbig2 世代121",
+"pbig2 世代121"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 193,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0121-g0817",
+"file": "train/pbig2-gen0121-g0817.json",
+"kind": "train",
+"title": "pbig2 世代121 の自己対局",
+"players": [
+"pbig2 世代121",
+"pbig2 世代121",
+"pbig2 世代121"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 115,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0141-g0857",
+"file": "train/pbig2-gen0141-g0857.json",
+"kind": "train",
+"title": "pbig2 世代141 の自己対局",
+"players": [
+"pbig2 世代141",
+"pbig2 世代141",
+"pbig2 世代141"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 75,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0141-g0715",
+"file": "train/pbig2-gen0141-g0715.json",
+"kind": "train",
+"title": "pbig2 世代141 の自己対局",
+"players": [
+"pbig2 世代141",
+"pbig2 世代141",
+"pbig2 世代141"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 89,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0141-g0647",
+"file": "train/pbig2-gen0141-g0647.json",
+"kind": "train",
+"title": "pbig2 世代141 の自己対局",
+"players": [
+"pbig2 世代141",
+"pbig2 世代141",
+"pbig2 世代141"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 204,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0141-g0281",
+"file": "train/pbig2-gen0141-g0281.json",
+"kind": "train",
+"title": "pbig2 世代141 の自己対局",
+"players": [
+"pbig2 世代141",
+"pbig2 世代141",
+"pbig2 世代141"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 66,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0141-g0714",
+"file": "train/pbig2-gen0141-g0714.json",
+"kind": "train",
+"title": "pbig2 世代141 の自己対局",
+"players": [
+"pbig2 世代141",
+"pbig2 世代141",
+"pbig2 世代141"
+],
+"rule": "お裾分け",
+"winner": 0,
+"plies": 166,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0141-g0017",
+"file": "train/pbig2-gen0141-g0017.json",
+"kind": "train",
+"title": "pbig2 世代141 の自己対局",
+"players": [
+"pbig2 世代141",
+"pbig2 世代141",
+"pbig2 世代141"
+],
+"rule": "消滅あり",
+"winner": 1,
+"plies": 248,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0182-g0189",
+"file": "train/pbig2-gen0182-g0189.json",
+"kind": "train",
+"title": "pbig2 世代182 の自己対局",
+"players": [
+"pbig2 世代182",
+"pbig2 世代182",
+"pbig2 世代182"
+],
+"rule": "全部持ち駒",
+"winner": 2,
+"plies": 256,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0182-g0418",
+"file": "train/pbig2-gen0182-g0418.json",
+"kind": "train",
+"title": "pbig2 世代182 の自己対局",
+"players": [
+"pbig2 世代182",
+"pbig2 世代182",
+"pbig2 世代182"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 81,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0182-g0295",
+"file": "train/pbig2-gen0182-g0295.json",
+"kind": "train",
+"title": "pbig2 世代182 の自己対局",
+"players": [
+"pbig2 世代182",
+"pbig2 世代182",
+"pbig2 世代182"
+],
+"rule": "消滅あり",
+"winner": 2,
+"plies": 338,
+"end": "入玉"
+},
+{
+"id": "pbig2-gen0182-g0756",
+"file": "train/pbig2-gen0182-g0756.json",
+"kind": "train",
+"title": "pbig2 世代182 の自己対局",
+"players": [
+"pbig2 世代182",
+"pbig2 世代182",
+"pbig2 世代182"
+],
+"rule": "全部持ち駒",
+"winner": 0,
+"plies": 96,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0182-g0220",
+"file": "train/pbig2-gen0182-g0220.json",
+"kind": "train",
+"title": "pbig2 世代182 の自己対局",
+"players": [
+"pbig2 世代182",
+"pbig2 世代182",
+"pbig2 世代182"
+],
+"rule": "お裾分け",
+"winner": 2,
+"plies": 178,
+"end": "玉を取る"
+},
+{
+"id": "pbig2-gen0182-g0386",
+"file": "train/pbig2-gen0182-g0386.json",
+"kind": "train",
+"title": "pbig2 世代182 の自己対局",
+"players": [
+"pbig2 世代182",
+"pbig2 世代182",
+"pbig2 世代182"
+],
+"rule": "消滅あり",
+"winner": 0,
+"plies": 177,
+"end": "入玉"
+}
+]

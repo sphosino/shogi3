@@ -450,7 +450,8 @@ function loadGameRecordText(text) {
     alert(`${n + 1}手目で読み込めなくなりました（${e.message}）。そこまでを読み込みます`);
   }
   renderKifu(); render();
-  setStatus(`📥 棋譜を読み込みました（${n}手）` + (gover ? '　終局' : `　${PNAME_BASE[turn]}の番`));
+  const who = Array.isArray(rec.players) ? '（' + rec.players.map((p, i) => PNAME_BASE[i].slice(0, 1) + ':' + p).join(' / ') + '）' : '';
+  setStatus(`📥 ${rec.title || '棋譜'}を読み込みました（${n}手）` + (gover ? '　終局' : `　${PNAME_BASE[turn]}の番`) + who);
   closeLoadKifu();
   if (n > 0 || gameRecord) enterReview();
   return true;
@@ -461,6 +462,15 @@ function loadGameRecordText(text) {
   const orig = window[name];
   if (typeof orig !== 'function') return;
   window[name] = function (...args) { if (reviewMode) exitReview(false); return orig.apply(this, args); };
+});
+
+// URL に ?game=棋譜のファイル があれば、開いたときにその棋譜を読み込んで検討する（web/games.html の一覧から開く）
+window.addEventListener('load', () => {
+  const g = new URLSearchParams(location.search).get('game');
+  if (!g || !/^[\w\-./]+\.json$/.test(g) || g.includes('..')) return;
+  fetch(g).then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then((t) => loadGameRecordText(t))
+    .catch((e) => setStatus('棋譜を読み込めませんでした：' + g + '（' + e.message + '）'));
 });
 
 window.addEventListener('keydown', (e) => {

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三人将棋AI 棋譜集</title>
+<style>
+  :root { --bg:#0d0905; --panel:#1a1108; --fg:#f1e3c4; --sub:#b09070; --rule:#4a3018; --accent:#ffaa44;
+          --c0:#4488ff; --c1:#ff4433; --c2:#33cc55; }
+  body { background:var(--bg); color:var(--fg); font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif; margin:0; line-height:1.6; }
+  main { max-width:960px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; color:var(--accent); }
+  p { color:var(--sub); margin:6px 0; font-size:14px; }
+  a { color:#8cc8ff; }
+  .filters { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:16px 0 10px; font-size:14px; }
+  select, input { background:var(--panel); color:var(--fg); border:1px solid var(--rule); border-radius:4px; padding:4px 6px; font:inherit; }
+  table { border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums; }
+  th, td { padding:6px 8px; border-bottom:1px solid var(--rule); text-align:left; white-space:nowrap; }
+  th { color:var(--sub); font-weight:400; position:sticky; top:0; background:var(--bg); cursor:pointer; }
+  tr:hover td { background:#21160b; }
+  .tag { font-size:11px; padding:1px 6px; border-radius:3px; border:1px solid var(--rule); color:var(--sub); }
+  .tag.rating { color:#ffd27a; border-color:#7a5a20; }
+  .wrap { overflow-x:auto; }
+  .w0 { color:var(--c0); } .w1 { color:var(--c1); } .w2 { color:var(--c2); }
+  #count { color:var(--sub); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>三人将棋AI 棋譜集</h1>
+  <p>自己対局で学習したAIが、実際に指した棋譜です。<b>トレーニング棋譜</b>は学習中の自己対局（3人とも同じ世代。一部は過去の世代が混ざる）、<b>レーティング棋譜</b>は世代どうしの強さを測った対局です。</p>
+  <p>「開く」で対局ページの検討モードが開きます。← → で1手ずつ動かせて、勝率の推移グラフも出ます。「🧠 解析する」で今の最強AIにも読ませられます。</p>
+  <p><a href="../shogi3.html">▶ 対局ページへ</a>　／　<a href="https://github.com/sphosino/shogi3">GitHub</a></p>
+  <div class="filters">
+    <label>種類 <select id="f-kind"><option value="">すべて</option><option value="train">トレーニング</option><option value="rating">レーティング</option></select></label>
+    <label>ルール <select id="f-rule"><option value="">すべて</option><option>全部持ち駒</option><option>お裾分け</option><option>消滅あり</option></select></label>
+    <label>決着 <select id="f-end"><option value="">すべて</option><option>玉を取る</option><option>入玉</option><option>500手</option></select></label>
+    <label>絞り込み <input id="f-text" placeholder="例：世代182" size="12"></label>
+    <span id="count"></span>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead><tr><th data-k="kind">種類</th><th data-k="title">対局</th><th>青 / 赤 / 緑</th><th data-k="rule">ルール</th><th data-k="winner">勝者</th><th data-k="plies">手数</th><th data-k="end">決着</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const NAME = ['青', '赤', '緑'];
+  let games = [], sortKey = null, sortDir = 1;
+  const genOf = (s) => { const m = /世代(\d+)/.exec(s); return m ? +m[1] : 0; };
+  function draw() {
+    const k = $('f-kind').value, r = $('f-rule').value, e = $('f-end').value, t = $('f-text').value.trim();
+    let list = games.filter((g) => (!k || g.kind === k) && (!r || g.rule === r) && (!e || g.end === e) &&
+      (!t || (g.title + ' ' + g.players.join(' ')).includes(t)));
+    if (sortKey) list = list.slice().sort((a, b) => {
+      const va = sortKey === 'title' ? genOf(a.title) : a[sortKey], vb = sortKey === 'title' ? genOf(b.title) : b[sortKey];
+      return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir;
+    });
+    $('count').textContent = `${list.length} / ${games.length}局`;
+    $('rows').innerHTML = list.map((g) => {
+      const same = g.players.every((p) => p === g.players[0]);
+      const players = same ? `<span style="color:var(--sub)">3人とも同じ</span>` : g.players.map((p, i) => `<span class="w${i}">${p}</span>`).join(' / ');
+      return `<tr><td><span class="tag ${g.kind}">${g.kind === 'train' ? 'トレーニング' : 'レーティング'}</span></td>` +
+        `<td>${g.title}</td><td>${players}</td><td>${g.rule}</td>` +
+        `<td class="w${g.winner}">${NAME[g.winner]}${same ? '' : '（' + g.players[g.winner] + '）'}</td>` +
+        `<td>${g.plies}</td><td>${g.end}</td>` +
+        `<td><a href="../shogi3.html?game=web/games/${g.file}">開く</a></td></tr>`;
+    }).join('');
+  }
+  document.querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => {
+    sortDir = sortKey === th.dataset.k ? -sortDir : 1; sortKey = th.dataset.k; draw();
+  }));
+  ['f-kind', 'f-rule', 'f-end'].forEach((id) => $(id).addEventListener('change', draw));
+  $('f-text').addEventListener('input', draw);
+  fetch('games/index.json').then((r) => r.json()).then((x) => { games = x; sortKey = 'title'; draw(); })
+    .catch(() => { $('rows').innerHTML = '<tr><td colspan="8">一覧を読み込めませんでした</td></tr>'; });
+</script>
+</body>
+</html>
