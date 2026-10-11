@@ -67,6 +67,7 @@ function setSelfPlayDiffBtns(locked){
     const btn=document.getElementById(id);
     if(btn){ btn.disabled=locked; btn.style.opacity=locked?'0.35':'1'; }
   });
+  if(!locked) setCpuCollusion(cpuCollusion);   // 学習AIなら共闘のボタンは押せないまま
 }
 function toggleSelfPlay(){
   if(selfPlayMode){
@@ -673,6 +674,14 @@ function setCpuCollusion(val){
       ? '⚠️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は共闘してあなたを狙ってきます。'
       : '⚔️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は<span style="color:#ffcc44">それぞれ自分の勝利</span>を目指します。';
   }
+  // 学習AIは共闘しない（共闘は手作りCPUだけの設定）。学習AIのときはボタンを押せなくして、そう書く
+  const net = typeof aiKind !== 'undefined' && aiKind === 'net';
+  [onBtn, offBtn].forEach(b=>{ if(b && !selfPlayMode){ b.disabled = net; b.style.opacity = net ? '0.35' : '1'; } });
+  if(net){
+    const t = '🧠 学習AIは共闘しません。いつも<span style="color:#ffcc44">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）';
+    if(desc) desc.innerHTML = t;
+    if(warn) warn.innerHTML = t;
+  }
 }
 
 function setKeepAllPieces(val){
@@ -743,6 +752,7 @@ function applyAISetting(){
     setDifficulty(CPU_LEVEL_BY_MS[thinkMs] || 'normal');
     AI_TIME_LIMIT_MS = thinkMs;
   }
+  setCpuCollusion(cpuCollusion);   // 共闘の表示（学習AIのときは「共闘しません」）
 }
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('c');
