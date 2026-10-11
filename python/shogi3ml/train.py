@@ -83,8 +83,7 @@ def train_steps(model, opt, scaler, window, steps: int, batch: int, device, rng:
     model.train()
     hist = []
     for s in range(steps):
-        idx = rng.integers(0, window.n, size=batch)
-        b = window.batch(idx, device)
+        b = window.sample(rng, batch, device)
         L = losses(model, b, q_mix)
         opt.zero_grad(set_to_none=True)
         scaler.scale(L["total"]).backward()

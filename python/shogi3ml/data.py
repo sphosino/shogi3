@@ -79,6 +79,28 @@ def load_shard(path: str) -> dict:
     return d
 
 
+class MultiWindow:
+    """いくつかのリプレイバッファから、決めた比率で局面を集めて1つのバッチにする
+    （自己対局のみ／他のモデル入り／調整局面 を分けて持ち、学習のたびに比率どおりに混ぜる）"""
+
+    def __init__(self, parts):
+        """parts: [(名前, Window, 比率)]。局面のないバッファは除き、残りの比率を足して1にする"""
+        parts = [(name, w, r) for name, w, r in parts if w.n > 0 and r > 0]
+        tot = sum(r for _, _, r in parts)
+        self.parts = [(name, w, r / tot) for name, w, r in parts]
+        self.n = sum(w.n for _, w, _ in self.parts)
+        self.files = sum(w.files for _, w, _ in self.parts)
+
+    def sample(self, rng: np.random.Generator, B: int, device) -> dict:
+        counts = [int(round(B * r)) for _, _, r in self.parts]
+        counts[0] += B - sum(counts)
+        bs = [w.sample(rng, c, device) for (_, w, _), c in zip(self.parts, counts) if c > 0]
+        return {k: torch.cat([b[k] for b in bs]) for k in bs[0]}
+
+    def describe(self) -> str:
+        return " ".join(f"{name}{w.n}局面({r*100:.0f}%)" for name, w, r in self.parts)
+
+
 class Window:
     """直近のシャードから学習用の局面を集めたもの（リプレイバッファ）"""
 
@@ -95,6 +117,9 @@ class Window:
         self.d = merge(parts) if parts else None
         self.n = 0 if self.d is None else len(self.d["winner"])
         self.files = len(parts)
+
+    def sample(self, rng: np.random.Generator, B: int, device) -> dict:
+        return self.batch(rng.integers(0, self.n, size=B), device)
 
     def batch(self, idx: np.ndarray, device) -> dict:
         d = self.d

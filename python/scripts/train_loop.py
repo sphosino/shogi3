@@ -54,6 +54,9 @@ def parse():
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"], help="取り駒のルール（all=全部持ち駒 / next=お裾分け / vanish=消滅あり / mix=3つを均等に混ぜる）")
     p.add_argument("--past-prob", type=float, default=0.0, help="自己対局のうち過去の世代を混ぜる対局の割合（半分は 現世代2+過去1、半分は 現世代1+過去2）")
+    p.add_argument("--mix-share", type=float, default=0.0, help="他のモデル入りの対局（過去の世代・弱いモデル）を別のバッファに分け、自己対局と学習でこの割合を使う")
+    p.add_argument("--adj-share", type=float, default=0.0, help="調整局面の対局（途中で駒を渡して大差を作る）を別のバッファに分け、自己対局と学習でこの割合を使う")
+    p.add_argument("--mix-past-weight", type=float, default=0.5, help="他のモデル入りの対局のうち、過去の世代の割合（残りは弱いモデル）")
     p.add_argument("--weak-models", nargs="*", default=[], help="自己対局に混ぜる弱いモデル（実行名:世代。例 pbig2:1 pmix:81）。1世代に1つを順番に使う")
     p.add_argument("--weak1-prob", type=float, default=0.0, help="自己対局のうち、弱いモデル1体（現世代2体）の対局の割合")
     p.add_argument("--weak2-prob", type=float, default=0.0, help="自己対局のうち、弱いモデル2体（現世代1体）の対局の割合")
@@ -137,7 +140,7 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")
     a = parse()
     root = os.path.join(os.path.dirname(__file__), "..", "..", "runs", a.run)
-    for sub in ("models", "selfplay"):
+    for sub in ("models", "selfplay", "selfplay_mix", "selfplay_adj"):
         os.makedirs(os.path.join(root, sub), exist_ok=True)
     logf = open(os.path.join(root, "log.txt"), "a", encoding="utf-8")
 
@@ -152,6 +155,8 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     rng = np.random.default_rng(a.seed)
     shard_dir = os.path.join(root, "selfplay")
+    mix_dir = os.path.join(root, "selfplay_mix")   # 他のモデル入りの対局（--mix-share）
+    adj_dir = os.path.join(root, "selfplay_adj")   # 調整局面の対局（--adj-share）
     model_path = lambda g: os.path.join(root, "models", f"gen{g:04d}.pt")
 
     # 別のルール・実行で学習したモデルから始める：それを世代1として保存し、その自己対局を最初のデータにする
@@ -201,56 +206,93 @@ def main():
         for g_ in opt.param_groups:
             g_["lr"] = a.lr_warm if warm else a.lr
         # 学習：ステップ数は、直近のシャード（新しく増えた局面）の数 × train_ratio ÷ バッチ
+        # --mix-share / --adj-share を使うときは、自己対局のみ／他のモデル入り／調整局面 の3つのバッファから決めた比率で混ぜる
         t = time.time()
-        win = D.Window(shard_dir, a.window)
+        pools = a.mix_share > 0 or a.adj_share > 0
+        pure_r = 1 - a.mix_share - a.adj_share
+        if pools:
+            win = D.MultiWindow([("自己対局のみ", D.Window(shard_dir, a.window), pure_r),
+                                 ("他のモデル入り", D.Window(mix_dir, int(a.window * a.mix_share / pure_r)), a.mix_share),
+                                 ("調整局面", D.Window(adj_dir, int(a.window * a.adj_share / pure_r)), a.adj_share)])
+        else:
+            win = D.Window(shard_dir, a.window)
         newest = max(glob.glob(os.path.join(shard_dir, "*.npz")), key=os.path.getmtime)
-        new_pos = len(D.load_shard(newest)["winner"])
+        new_pos = int(len(D.load_shard(newest)["winner"]) / (pure_r if pools else 1))
         steps = max(1, int(np.ceil(new_pos * a.train_ratio / a.batch)))
         L = train_steps(model, opt, scaler, win, steps, a.batch, device, rng, q_mix=a.q_mix)
         gen += 1
         M.save(model, model_path(gen), extra=dict(train=L))
-        log(f"世代{gen}: 学習 {steps}ステップ lr={opt.param_groups[0]['lr']}（新規 {new_pos}局面、窓 {win.n}局面/{win.files}シャード）{time.time()-t:.0f}秒 "
+        wdesc = win.describe() if pools else f"{win.n}局面/{win.files}シャード"
+        log(f"世代{gen}: 学習 {steps}ステップ lr={opt.param_groups[0]['lr']}（新規 {new_pos}局面、窓 {wdesc}）{time.time()-t:.0f}秒 "
             + " ".join(f"{k}={v:.3f}" for k, v in L.items()))
 
-        # 自己対局（--past-prob > 0 なら、一部の対局に過去の世代を混ぜる。学習データは現世代の手番だけ）
+        # 自己対局。学習データは現世代の手番だけ
         t = time.time()
-        models, alt = {0: model}, []
-        if a.past_prob > 0:
+        models, pool, weak = {0: model}, [], None
+        if a.past_prob > 0 or (pools and a.mix_share > 0):   # 過去の世代
             cands = [g for g in range(a.past_start, gen, a.past_every) if os.path.exists(model_path(g))][-a.past_max:]
             pool = [cands[(gen * a.past_per_gen + j) % len(cands)] for j in range(min(a.past_per_gen, len(cands)))] if cands else []
             for i, g in enumerate(pool):
                 if g not in past_cache:
                     past_cache[g] = M.load(model_path(g), device).eval()
                 models[i + 1] = past_cache[g]
-        # 混ぜる対局の種類と割合。Driver は alt_seats から等しい確率で選ぶので、割合に比例した数だけ並べる（0.5%単位）
-        weighted = []
         past_ids = [i for i in models if i > 0]
-        for i in past_ids:
-            w = a.past_prob / 2 / len(past_ids)
-            weighted += [(["net:0", "net:0", f"net:{i}"], w), (["net:0", f"net:{i}", f"net:{i}"], w)]
-        weak = None
-        if a.weak_models and (a.weak1_prob > 0 or a.weak2_prob > 0):
+        if a.weak_models and (a.weak1_prob > 0 or a.weak2_prob > 0 or (pools and a.mix_share > 0)):   # 弱いモデル（別の実行）
             weak = a.weak_models[gen % len(a.weak_models)]
             if weak not in past_cache:
                 run2, g2 = weak.split(":")
                 past_cache[weak] = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), device).eval()
             wi = len(models)
             models[wi] = past_cache[weak]
-            weighted += [(["net:0", "net:0", f"net:{wi}"], a.weak1_prob), (["net:0", f"net:{wi}", f"net:{wi}"], a.weak2_prob)]
-        alt = [s for s, w in weighted for _ in range(int(round(w / 0.005)))]
-        alt_prob = sum(w for _, w in weighted)
-        drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
-                               visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
-                               seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=alt_prob if alt else 0.0,
-                               gift_prob=a.gift_prob)
-        stats = {}
-        d = D.decode(run_driver(drv, models, device, stats))
-        if past_ids:
-            log(f"  過去の世代 {pool} を混ぜた対局: {past_summary(d, past_ids)}")
-        if weak:
-            log(f"  弱いモデル {weak} を混ぜた対局: {past_summary(d, [wi])}")
-        D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
-        log(f"  自己対局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+
+        def mixed_seats(w_past, w_weak1, w_weak2):
+            """混ぜる対局の席の並び。Driver は alt_seats から等しい確率で選ぶので、割合に比例した数だけ並べる（0.5%単位）"""
+            weighted = []
+            for i in past_ids:
+                w = w_past / 2 / len(past_ids)
+                weighted += [(["net:0", "net:0", f"net:{i}"], w), (["net:0", f"net:{i}", f"net:{i}"], w)]
+            if weak:
+                weighted += [(["net:0", "net:0", f"net:{wi}"], w_weak1), (["net:0", f"net:{wi}", f"net:{wi}"], w_weak2)]
+            return [s for s, w in weighted for _ in range(int(round(w / 0.005)))], sum(w for _, w in weighted)
+
+        def play(n, alt, alt_prob, gift, seed):
+            drv = shogi3_rs.Driver(parallel=a.parallel, total_games=n, seats=["net:0"] * 3,
+                                   visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
+                                   seed=seed, rule=a.rule, alt_seats=alt, alt_prob=alt_prob if alt else 0.0, gift_prob=gift)
+            st = {}
+            return D.decode(run_driver(drv, models, device, st)), st
+
+        if not pools:
+            alt, alt_prob = mixed_seats(a.past_prob, a.weak1_prob, a.weak2_prob)
+            d, stats = play(a.games_per_gen, alt, alt_prob, a.gift_prob, a.seed * 100000 + gen)
+            if past_ids:
+                log(f"  過去の世代 {pool} を混ぜた対局: {past_summary(d, past_ids)}")
+            if weak:
+                log(f"  弱いモデル {weak} を混ぜた対局: {past_summary(d, [wi])}")
+            D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
+            log(f"  自己対局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+        else:
+            G = a.games_per_gen
+            n_mix, n_adj = int(round(G * a.mix_share)), int(round(G * a.adj_share))
+            # 自己対局のみ（現世代3人、局面はいじらない）
+            d, stats = play(G - n_mix - n_adj, [], 0.0, 0.0, a.seed * 100000 + gen)
+            D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
+            log(f"  自己対局のみ {G - n_mix - n_adj}局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+            if n_mix:   # 他のモデル入り（過去の世代と弱いモデルを半々。どちらも 現世代2＋1 と 現世代1＋2 を半々。局面はいじらない）
+                t = time.time()
+                w_past = a.mix_past_weight if (past_ids and weak) else (1.0 if past_ids else 0.0)
+                w_weak = 1.0 - w_past
+                alt, _ = mixed_seats(w_past, w_weak / 2, w_weak / 2)
+                dm, sm = play(n_mix, alt, 1.0, 0.0, a.seed * 100000 + gen + 50000)
+                D.save_shard(os.path.join(mix_dir, f"gen{gen:04d}.npz"), dm)
+                log(f"  他のモデル入り {n_mix}局 {time.time()-t:.0f}秒 局面 {len(dm['winner'])}"
+                    + (f" / 過去の世代 {pool}: {past_summary(dm, past_ids)}" if past_ids else "")
+                    + (f" / 弱いモデル {weak}: {past_summary(dm, [wi])}" if weak else ""))
+            if n_adj:   # 調整局面（途中で1人に駒を渡して大差の局面を作る。現世代3人）
+                t = time.time()
+                da, sa = play(n_adj, [], 0.0, 1.0, a.seed * 100000 + gen + 70000)
+                D.save_shard(os.path.join(adj_dir, f"gen{gen:04d}.npz"), da)
+                log(f"  調整局面 {n_adj}局 {time.time()-t:.0f}秒 局面 {len(da['winner'])} {json.dumps(summarize_games(da), ensure_ascii=False)}")
         # 過学習の監視：まだ学習に使っていない、今の自己対局のデータで価値を測る
         vc = value_check(model, d, device)
         log(f"  価値（未学習データ）: 損失 {vc['loss']:.3f} 正解率 {vc['acc']*100:.1f}%（60手未満 {vc['acc_early']*100:.1f}%）")
