@@ -127,6 +127,8 @@ struct Game {
     /// 最初にランダムに指す残りの手数（rand_prob の対局だけ）と、指した手数
     rand_left: u16,
     rand_done: u16,
+    /// 途中の局面から始めた対局なら、その局面の手数（start_prob の対局だけ。0 = 初期局面から）
+    start_ply: u16,
 }
 
 #[derive(Clone)]
@@ -155,6 +157,9 @@ pub struct Driver {
     rand_prob: f64,
     rand_min: u16,
     rand_max: u16,
+    /// 途中の局面から始める対局の割合と、始める局面（109バイト。自己対局で大差がついた局面など）
+    start_prob: f64,
+    start_states: Vec<Vec<u8>>,
     record: bool,
     total_games: u64,
     started: u64,
@@ -174,10 +179,12 @@ impl Driver {
         self.started += 1;
         let seed = self.seed.wrapping_mul(1_000_003).wrapping_add(id);
         let mut pick = Rng::new(seed ^ 0x5EED_A17);
-        // 対局の種類：[0, alt_prob) で他のモデル入り、続く [.., +rand_prob) でランダム局面から、残りはふつうの自己対局
+        // 対局の種類：[0, alt_prob) で他のモデル入り、続く [.., +rand_prob) でランダム局面から、続く [.., +start_prob) で途中の局面から、残りはふつうの自己対局
         let u = pick.unit();
         let alt_p = if self.alt_seats.is_empty() { 0.0 } else { self.alt_prob };
         let use_rand = u >= alt_p && u < alt_p + self.rand_prob;
+        let start_p = if self.start_states.is_empty() { 0.0 } else { self.start_prob };
+        let use_start = u >= alt_p + self.rand_prob && u < alt_p + self.rand_prob + start_p;
         let (specs, rot) = if u < alt_p {
             let k = ((pick.unit() * self.alt_seats.len() as f64) as usize).min(self.alt_seats.len() - 1);
             (&self.alt_seats[k], ((pick.unit() * 3.0) as usize).min(2))
@@ -191,9 +198,15 @@ impl Driver {
             let spec = &specs[(s + 3 - rot) % 3];
             seats.push(make_seat(spec, seed * 3 + s as u64)?);
         }
+        let pos = if use_start {
+            position_from_state(&self.start_states[pick.below(self.start_states.len())])?
+        } else {
+            Position::initial(self.rules[((id / 3) % self.rules.len() as u64) as usize])
+        };
+        let start_ply = if use_start { pos.move_count.max(1) } else { 0 };
         Ok(Game {
             id,
-            pos: Position::initial(self.rules[((id / 3) % self.rules.len() as u64) as usize]),
+            pos,
             seats,
             search: None,
             target: 0,
@@ -208,6 +221,7 @@ impl Driver {
             gift_at,
             rand_left: if use_rand { self.rand_min + pick.below((self.rand_max.max(self.rand_min) - self.rand_min) as usize + 1) as u16 } else { 0 },
             rand_done: 0,
+            start_ply,
         })
     }
 
@@ -385,7 +399,7 @@ impl Driver {
     #[new]
     #[pyo3(signature = (parallel, total_games, seats, rotate=false, record=true, visits_full=600, visits_fast=100, full_prob=0.25,
                         temp_plies=30, c_puct=1.5, fpu_reduction=0.2, dirichlet_total=10.0, dirichlet_weight=0.25, scaffold=false, seed=1, rule="all",
-                        alt_seats=Vec::new(), alt_prob=0.0, gift_prob=0.0, rand_prob=0.0, rand_min=40, rand_max=100))]
+                        alt_seats=Vec::new(), alt_prob=0.0, gift_prob=0.0, rand_prob=0.0, rand_min=40, rand_max=100, start_prob=0.0, start_states=Vec::new()))]
     #[allow(clippy::too_many_arguments)]
     fn py_new(
         parallel: usize,
@@ -410,7 +424,12 @@ impl Driver {
         rand_prob: f64,
         rand_min: u16,
         rand_max: u16,
+        start_prob: f64,
+        start_states: Vec<Vec<u8>>,
     ) -> PyResult<Driver> {
+        if start_states.iter().any(|s| s.len() != STATE_BYTES) {
+            return Err(PyValueError::new_err("start_states の各要素は109バイト"));
+        }
         if seats.len() != 3 {
             return Err(PyValueError::new_err("seats は3つ"));
         }
@@ -437,6 +456,8 @@ impl Driver {
             rand_prob,
             rand_min,
             rand_max,
+            start_prob,
+            start_states,
             record,
             total_games,
             started: 0,
@@ -548,6 +569,7 @@ impl Driver {
         let (mut g_id, mut g_winner, mut g_kind, mut g_plies, mut g_seat_net) = (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
         let mut g_rule: Vec<u8> = Vec::new();
         let mut g_rand: Vec<u16> = Vec::new();
+        let mut g_start: Vec<u16> = Vec::new();
         let (mut g_moves_off, mut g_moves): (Vec<i64>, Vec<u16>) = (vec![0], Vec::new());
         for g in &games {
             let (w, kind) = g.outcome.unwrap();
@@ -561,6 +583,7 @@ impl Driver {
             g_plies.push(g.pos.move_count);
             g_rule.push(rule_id(g.pos.rule));
             g_rand.push(g.rand_done);
+            g_start.push(g.start_ply);
             for s in &g.seats {
                 g_seat_net.push(match s {
                     Seat::Net(n) => *n as i8,
@@ -629,6 +652,7 @@ impl Driver {
         d.set_item("g_plies", PyBytes::new_bound(py, &u16b(&g_plies)))?;
         d.set_item("g_rule", PyBytes::new_bound(py, &g_rule))?;
         d.set_item("g_rand", PyBytes::new_bound(py, &u16b(&g_rand)))?;
+        d.set_item("g_start", PyBytes::new_bound(py, &u16b(&g_start)))?;
         d.set_item("g_seat_net", PyBytes::new_bound(py, &g_seat_net.iter().map(|&x| x as u8).collect::<Vec<u8>>()))?;
         d.set_item("g_moves_offsets", PyBytes::new_bound(py, &i64b(&g_moves_off)))?;
         d.set_item("g_moves", PyBytes::new_bound(py, &u16b(&g_moves)))?;

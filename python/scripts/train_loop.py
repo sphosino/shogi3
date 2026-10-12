@@ -60,6 +60,9 @@ def parse():
     p.add_argument("--rand-min", type=int, default=40, help="ランダム局面：最初にランダムに指す手数の最小")
     p.add_argument("--rand-max", type=int, default=100, help="ランダム局面：最初にランダムに指す手数の最大")
     p.add_argument("--rand-seed-games", type=int, default=0, help="ランダム局面の山が空なら、最初にこの局数をまとめて作る")
+    p.add_argument("--lead-share", type=float, default=0.0, help="学習バッチのうち「大差局面から」の山の割合（自己対局で大差がついた実際の局面から指し直した対局）")
+    p.add_argument("--lead-min", type=int, default=12, help="大差局面：3人とも生きていて、トップが2位より駒数（盤上の玉以外＋持ち駒）でこの枚数以上多い局面")
+    p.add_argument("--lead-from", type=int, default=182, help="大差局面を集める自己対局のシャード：この世代から（それより前は記録の形が違う）")
     p.add_argument("--mix-past-weight", type=float, default=0.5, help="他のモデル入りの対局のうち、過去の世代の割合（残りは弱いモデル）")
     p.add_argument("--weak-models", nargs="*", default=[], help="自己対局に混ぜる弱いモデル（実行名:世代。例 pbig2:1 pmix:81）。1世代に1つを順番に使う")
     p.add_argument("--weak1-prob", type=float, default=0.0, help="自己対局のうち、弱いモデル1体（現世代2体）の対局の割合")
@@ -97,6 +100,19 @@ def past_summary(d: dict, ids=None) -> str:
         if m.any():
             parts.append(f"{name} {int(m.sum())}局 現世代の勝率 {won[m].mean()*100:.1f}%（互角なら{k/3*100:.0f}%）")
     return " / ".join(parts)
+
+
+def lead_states(d: dict, th: int) -> np.ndarray:
+    """3人とも生きていて、トップが2位より駒数で th 枚以上多い局面（109バイトの行）"""
+    st = d["states"]
+    board = st[:, :81].astype(np.int64)
+    owner = np.where(board > 0, (board - 1) >> 4, -1)
+    ptype = np.where(board > 0, (board - 1) & 7, -1)
+    hand = st[:, 81:102].reshape(-1, 3, 7).sum(2).astype(np.int64)
+    cnt = np.stack([((owner == o) & (ptype != 7)).sum(1) for o in range(3)], 1) + hand
+    srt = np.sort(cnt, 1)
+    keep = (st[:, 102:105] == 0).all(1) & (srt[:, 2] - srt[:, 1] >= th)
+    return st[keep]
 
 
 def summarize_games(d: dict) -> dict:
@@ -144,7 +160,7 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")
     a = parse()
     root = os.path.join(os.path.dirname(__file__), "..", "..", "runs", a.run)
-    for sub in ("models", "selfplay", "selfplay_mix", "selfplay_adj", "selfplay_rand"):
+    for sub in ("models", "selfplay", "selfplay_mix", "selfplay_adj", "selfplay_rand", "selfplay_lead"):
         os.makedirs(os.path.join(root, sub), exist_ok=True)
     logf = open(os.path.join(root, "log.txt"), "a", encoding="utf-8")
 
@@ -162,6 +178,7 @@ def main():
     mix_dir = os.path.join(root, "selfplay_mix")   # 他のモデル入りの対局（--mix-share）
     adj_dir = os.path.join(root, "selfplay_adj")   # 調整局面の対局（--adj-share）
     rand_dir = os.path.join(root, "selfplay_rand")  # ランダム局面から始めた対局（--rand-share）
+    lead_dir = os.path.join(root, "selfplay_lead")  # 大差局面から指し直した対局（--lead-share）
     model_path = lambda g: os.path.join(root, "models", f"gen{g:04d}.pt")
 
     # 別のルール・実行で学習したモデルから始める：それを世代1として保存し、その自己対局を最初のデータにする
@@ -216,6 +233,13 @@ def main():
         D.save_shard(os.path.join(rand_dir, f"gen{gen:04d}.npz"), dr)
         log(f"ランダム局面から {a.rand_seed_games}局をまとめて作成 {time.time()-t:.0f}秒（最初のランダムな手 平均{dr['g_rand'].mean():.0f}手）"
             f" 局面 {len(dr['winner'])} {json.dumps(summarize_games(dr), ensure_ascii=False)}")
+    # 大差局面の候補：これまでの「自己対局のみ」のシャードから集める（駒はいじらない、実際の局面）。新しい世代の分は毎世代足す
+    starts = np.zeros((0, 109), dtype=np.uint8)
+    if a.lead_share > 0:
+        files = [f for f in glob.glob(os.path.join(shard_dir, "gen*.npz")) if int(os.path.basename(f)[3:7]) >= a.lead_from]
+        if files:
+            starts = np.concatenate([lead_states(D.load_shard(f), a.lead_min) for f in files])
+        log(f"大差局面（{a.lead_min}枚以上リード）の候補 {len(starts)}局面（世代{a.lead_from}以降の自己対局 {len(files)}シャードから）")
     for _ in range(a.gens):
         # 学習率：蒸留直後の数世代は低く（--lr-warm）
         warm = a.lr_warm is not None and gen < a.lr_warm_gens + 1
@@ -224,13 +248,14 @@ def main():
         # 学習：ステップ数は、直近のシャード（新しく増えた局面）の数 × train_ratio ÷ バッチ
         # --mix-share / --adj-share を使うときは、自己対局のみ／他のモデル入り／調整局面 の3つのバッファから決めた比率で混ぜる
         t = time.time()
-        pools = a.mix_share > 0 or a.adj_share > 0 or a.rand_share > 0
-        pure_r = 1 - a.mix_share - a.adj_share - a.rand_share
+        pools = a.mix_share > 0 or a.adj_share > 0 or a.rand_share > 0 or a.lead_share > 0
+        pure_r = 1 - a.mix_share - a.adj_share - a.rand_share - a.lead_share
         if pools:
             win = D.MultiWindow([("自己対局のみ", D.Window(shard_dir, a.window), pure_r),
                                  ("他のモデル入り", D.Window(mix_dir, int(a.window * a.mix_share / pure_r)), a.mix_share),
                                  ("調整局面", D.Window(adj_dir, int(a.window * a.adj_share / pure_r)), a.adj_share),
-                                 ("ランダム局面から", D.Window(rand_dir, int(a.window * a.rand_share / pure_r)), a.rand_share)])
+                                 ("ランダム局面から", D.Window(rand_dir, int(a.window * a.rand_share / pure_r)), a.rand_share),
+                                 ("大差局面から", D.Window(lead_dir, int(a.window * a.lead_share / pure_r)), a.lead_share)])
         else:
             win = D.Window(shard_dir, a.window)
         newest = max(glob.glob(os.path.join(shard_dir, "*.npz")), key=os.path.getmtime)
@@ -296,14 +321,25 @@ def main():
             drv = shogi3_rs.Driver(parallel=a.parallel, total_games=a.games_per_gen, seats=["net:0"] * 3,
                                    visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
                                    seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=a.mix_share if alt else 0.0,
-                                   rand_prob=a.rand_share, rand_min=a.rand_min, rand_max=a.rand_max)
+                                   rand_prob=a.rand_share, rand_min=a.rand_min, rand_max=a.rand_max,
+                                   start_prob=a.lead_share if len(starts) else 0.0, start_states=[bytes(s) for s in starts])
             stats = {}
             dall = D.decode(run_driver(drv, models, device, stats))
             is_mix = (dall["g_seat_net"] != 0).any(1)
             is_rand = dall["g_rand"] > 0
-            d = D.subset_games(dall, ~is_mix & ~is_rand)
+            is_lead = dall["g_start"] > 0
+            pure = ~is_mix & ~is_rand & ~is_lead
+            d = D.subset_games(dall, pure)
             D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
-            log(f"  自己対局 {a.games_per_gen}局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 / 自己対局のみ {int((~is_mix & ~is_rand).sum())}局 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+            log(f"  自己対局 {a.games_per_gen}局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 / 自己対局のみ {int(pure.sum())}局 {json.dumps(summarize_games(d), ensure_ascii=False)}")
+            if is_lead.any():
+                dl = D.subset_games(dall, is_lead)
+                D.save_shard(os.path.join(lead_dir, f"gen{gen:04d}.npz"), dl)
+                log(f"  大差局面から {int(is_lead.sum())}局（始めた手数 平均{dl['g_start'].mean():.0f}手目） 局面 {len(dl['winner'])} {json.dumps(summarize_games(dl), ensure_ascii=False)}")
+            if a.lead_share > 0:
+                new = lead_states(d, a.lead_min)
+                starts = np.concatenate([starts, new])
+                log(f"  大差局面の候補 +{len(new)}局面 → {len(starts)}局面")
             if is_mix.any():
                 dm = D.subset_games(dall, is_mix)
                 D.save_shard(os.path.join(mix_dir, f"gen{gen:04d}.npz"), dm)

@@ -39,10 +39,11 @@ _DTYPES = {
     "g_moves_offsets": (np.int64, (-1,)),
     "g_moves": (np.uint16, (-1,)),
     "g_rand": (np.uint16, (-1,)),      # 最初にランダムに指した手数（ランダム局面から始めた対局。0 = ふつう）
+    "g_start": (np.uint16, (-1,)),     # 途中の局面から始めた対局なら、その局面の手数（0 = 初期局面から。g_moves はその局面からの手）
 }
 
 _POS_KEYS = ["states", "full", "winner", "rank", "next_elim", "root_value", "loss20", "final_material", "st6", "st16", "remaining", "game_id"]
-_GAME_KEYS = ["g_id", "g_winner", "g_kind", "g_plies", "g_rule", "g_seat_net", "g_rand"]
+_GAME_KEYS = ["g_id", "g_winner", "g_kind", "g_plies", "g_rule", "g_seat_net", "g_rand", "g_start"]
 
 
 def subset_games(d: dict, keep: np.ndarray) -> dict:
@@ -68,8 +69,9 @@ def subset_games(d: dict, keep: np.ndarray) -> dict:
 def decode(d: dict) -> dict:
     """Driver.take_finished() の bytes の dict → numpy の dict"""
     out = {k: np.frombuffer(v, dtype=_DTYPES[k][0]).reshape(_DTYPES[k][1]) for k, v in d.items()}
-    if "g_rand" not in out:   # g_rand を出さない古い Driver
-        out["g_rand"] = np.zeros(len(out["g_winner"]), dtype=np.uint16)
+    for k in ("g_rand", "g_start"):   # これらを出さない古い Driver
+        if k not in out:
+            out[k] = np.zeros(len(out["g_winner"]), dtype=np.uint16)
     return out
 
 
@@ -103,8 +105,9 @@ def load_shard(path: str) -> dict:
         d["states"] = np.concatenate([d["states"], np.zeros((len(d["states"]), 1), dtype=np.uint8)], axis=1)
     if "g_rule" not in d:
         d["g_rule"] = np.zeros(len(d["g_winner"]), dtype=np.uint8)
-    if "g_rand" not in d:
-        d["g_rand"] = np.zeros(len(d["g_winner"]), dtype=np.uint16)
+    for k in ("g_rand", "g_start"):
+        if k not in d:
+            d[k] = np.zeros(len(d["g_winner"]), dtype=np.uint16)
     return d
 
 
