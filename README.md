@@ -9,11 +9,18 @@
 
 ![学習AIの成長曲線](docs/growth.svg)
 
-駒価値だけで読む足場（0）から、今の最強（pbig2 世代61）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。
+駒価値だけで読む足場（0）から、今の最強（pbig2 世代224、約2,290）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。AIの対局から分かった三人将棋の戦い方（賭けの捨て駒、リードしても勝てない、席の有利不利）は [docs/findings.md](docs/findings.md)。
+
+**v1.0（2026-10-13）で凍結しました。** 学習はここで止めています。
 
 ## 遊び方
 
 **ブラウザで今すぐ遊ぶ：https://sphosino.github.io/shogi3/shogi3.html** （難易度で「🧠 学習AI」を選ぶと、学習したAIがあなたのPCのGPUで動きます。GPUが使えなければCPUで、少し弱く遅くなります）
+
+- 考える時間は0.5〜8秒から選べる。「CPU」は手作りのCPU（時間に合わせて入門〜上級）。
+- **🔍 検討**：棋譜を戻して、学習AIの候補手（勝率・読んだ割合）を盤の上に表示する。変化も試せる。
+- **📋 棋譜をコピー / 📥 棋譜を読み込む**：対局をJSONで保存・再現する。
+- **📚 AIの棋譜集**（https://sphosino.github.io/shogi3/web/games.html）：学習中の自己対局とレーティング対局の棋譜。
 
 ### 手作りのCPUと対局する
 
@@ -21,14 +28,14 @@
 
 ### 学習AIと対局する
 
-学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（現時点の最強は `shogi3-pbig2-gen61.pt`）。
+学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（最終版は `shogi3-pbig2-gen224.pt`）。
 
 ```
-python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen61.pt   # ダウンロードした重み
-python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 61           # 自分で学習した runs/ の重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen224.pt   # ダウンロードした重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 224           # 自分で学習した runs/ の重み
 ```
 
-`http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。1手あたり800回探索する（GPUが空いていれば1手1〜3秒）。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
+`http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。選んだ時間いっぱい探索する。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
 
 - `--run` / `--gen` で使うネットを選ぶ（省略すると `--run` の最新の世代）。
 - 取り駒ルール3種すべてで指せる。ルールはネットにも入力として渡す（[docs/ai_architecture.md](docs/ai_architecture.md)）。
@@ -75,10 +82,11 @@ VIRTUAL_ENV=../../python/.venv ../../python/.venv/Scripts/maturin.exe develop --
 リポジトリ直下で実行する。ログは `runs/<実行名>/log.txt`、評価は `eval.jsonl`。
 
 ```
-# 今の本線：3つのルールを混ぜて、p5c 世代25から学習（docs/training.md）
-python/.venv/Scripts/python.exe python/scripts/train_loop.py --run pmix --rule mix --init p5c:25 --gens 20 \
-  --games-per-gen 1000 --window 600000 --lr 0.005 --lr-warm 0.002 --lr-warm-gens 3 \
-  --eval-every 5 --eval-games 150 --eval-vs gen:1
+# 最後の学習（pbig2 世代214〜229）：3ルール混合、学習データの山を 88/5/5/2 で混ぜる（docs/results.md）
+python/.venv/Scripts/python.exe python/scripts/train_loop.py --run pbig2 --rule mix --gens 16 --games-per-gen 1000 \
+  --parallel 512 --window 3000000 --lr 0.0007 --past-start 1 --past-every 10 --past-max 6 --past-per-gen 1 \
+  --weak-models pbig2:1 pmix:81 pmix:41 --mix-share 0.05 --rand-share 0.05 --rand-min 40 --rand-max 100 \
+  --lead-share 0.02 --lead-min 12 --lead-from 182 --eval-every 8 --eval-games 300 --eval-visits 200 --eval-vs gen:140 gen:213
 
 # 評価（1体 vs 同じ相手2体、席は毎局入れ替え。互角なら33.3%）
 python/.venv/Scripts/python.exe python/scripts/eval_models.py --run p5c --gen 25 --vs ext:p4:51 gen:1 --games 300
