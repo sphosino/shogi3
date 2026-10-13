@@ -2,10 +2,12 @@
 
 use crate::eval::{EvalOut, Evaluator};
 use crate::rng::Rng;
-use shogi3_core::{Move, Position};
+use shogi3_core::{mv_to, piece_type, Move, Position, OU};
 
 /// 指せる手がないときのパス
 pub const PASS: Move = u16::MAX;
+/// 玉を取る手の方策の下限
+const KING_CAPTURE_MIN_PRIOR: f32 = 0.1;
 const NONE: u32 = u32::MAX;
 
 #[derive(Clone, Debug)]
@@ -176,7 +178,14 @@ impl Search {
                 let id = leaf.node() as usize;
                 let start = self.edges.len() as u32;
                 for (i, &mv) in moves.iter().enumerate() {
-                    let prior = if moves.len() == 1 { 1.0 } else { ev.priors.get(i).copied().unwrap_or(0.0) };
+                    let mut prior = if moves.len() == 1 { 1.0 } else { ev.priors.get(i).copied().unwrap_or(0.0) };
+                    // 玉を取る手は、ネットの方策がほぼ0でも必ず読まれるようにする（遠くの大駒で取る手を見落とした）
+                    if mv != PASS {
+                        let c = self.nodes[id].pos.board[mv_to(mv)];
+                        if c != 0 && piece_type(c) == OU {
+                            prior = prior.max(KING_CAPTURE_MIN_PRIOR);
+                        }
+                    }
                     self.edges.push(Edge { mv, prior, child: NONE });
                 }
                 let node = &mut self.nodes[id];
