@@ -9,9 +9,9 @@
 
 ![学習AIの成長曲線](docs/growth.svg)
 
-駒価値だけで読む足場（0）から、今の最強（pbig2 世代224、約2,290）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。AIの対局から分かった三人将棋の戦い方（賭けの捨て駒、リードしても勝てない、席の有利不利）は [docs/findings.md](docs/findings.md)。
+駒価値だけで読む足場（0）から、今の最強（pbig2 世代240、約2,310）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。AIの対局から分かった三人将棋の戦い方（賭けの捨て駒、リードしても勝てない、席の有利不利）は [docs/findings.md](docs/findings.md)。
 
-**v1.0（2026-10-13）で凍結しました。** 学習はここで止めています。
+**v1.1（2026-10-14）で凍結しました。** 学習はここで止めています。
 
 ## 遊び方
 
@@ -28,11 +28,11 @@
 
 ### 学習AIと対局する
 
-学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（最終版は `shogi3-pbig2-gen224.pt`）。
+学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（最終版は `shogi3-pbig2-gen240.pt`）。
 
 ```
-python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen224.pt   # ダウンロードした重み
-python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 224           # 自分で学習した runs/ の重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen240.pt   # ダウンロードした重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 240           # 自分で学習した runs/ の重み
 ```
 
 `http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。選んだ時間いっぱい探索する。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
