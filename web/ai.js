@@ -17,9 +17,9 @@
     tempPlies: 15,
 
     async init(opt) {
-      // ページの URL に ?model=pbig2-gen250 のように付けると、web/models/ の別の重みを使う（手元で試すとき）
+      // ページの URL に ?model=pbig2-gen240 のように付けると、web/models/ の別の重みを使う（手元で試すとき）
       const q = new URLSearchParams(global.location ? global.location.search : "").get("model");
-      const def = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen240.onnx";
+      const def = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen250.onnx";
       const o = Object.assign({ model: def, wasm: "web/shogi3_wasm.wasm" }, opt || {});
       const resp = await fetch(o.wasm);
       const { instance } = await WebAssembly.instantiate(await resp.arrayBuffer(), {});
@@ -41,7 +41,7 @@
         } catch (e) { lastErr = e; }
       }
       if (!this.sess) throw lastErr || new Error("ネットを読み込めませんでした");
-      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen240
+      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen250
       if (this.provider === "wasm") { this.visits = o.cpuVisits || 200; this.batch = 4; }
       else { this.visits = o.visits || 800; this.batch = 16; }
       // 準備運転：最初の推論は GPU の準備で遅いので、ここで済ませておく（1手目だけ読みが浅くならないように）
