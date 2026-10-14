@@ -17,7 +17,10 @@
     tempPlies: 15,
 
     async init(opt) {
-      const o = Object.assign({ model: "web/models/pbig2-gen240.onnx", wasm: "web/shogi3_wasm.wasm" }, opt || {});
+      // ページの URL に ?model=pbig2-gen250 のように付けると、web/models/ の別の重みを使う（手元で試すとき）
+      const q = new URLSearchParams(global.location ? global.location.search : "").get("model");
+      const def = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen240.onnx";
+      const o = Object.assign({ model: def, wasm: "web/shogi3_wasm.wasm" }, opt || {});
       const resp = await fetch(o.wasm);
       const { instance } = await WebAssembly.instantiate(await resp.arrayBuffer(), {});
       this.w = instance.exports;
