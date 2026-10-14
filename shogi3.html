@@ -45,8 +45,9 @@
         <button onclick="showReviewPos(0)" title="最初（Home）">⏮</button>
         <button onclick="reviewStep(-1)" title="1手戻る（←）">◀</button>
         <button onclick="reviewStep(1)" title="1手進む（→）">▶</button>
-        <button onclick="showReviewPos(review.pos.length-1)" title="最後（End）">⏭</button>
+        <button onclick="showReviewPos(review.line.length-1)" title="最後（End）">⏭</button>
         <button id="review-auto" onclick="toggleReviewAuto()" title="学習AIで、この局面の候補手を調べます（考える時間は難易度の秒数）">🧠 解析する</button>
+        <button id="review-resume" onclick="rvResumeHere()" title="表示している局面（変化の途中でも）から対局を再開します。棋譜はこの局面までの手を残します">▶ この局面から指す</button>
       </div>
       <div id="review-pos" style="text-align:center;margin-top:6px;color:#ffd890;"></div>
       <div id="review-var" style="margin-top:4px;line-height:1.8;"></div>

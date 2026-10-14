@@ -60,7 +60,8 @@ function enterReview() {
   const rec = gameRecord && gameRecord.moves.length && kifu.length ? gameRecord
     : { start: { board: rvClone(board), hand: rvClone(hand), eliminated: [...eliminated], turn, moveCount, rule: keepAllPieces }, moves: [] };
   review.rule = rec.start.rule;
-  let p = { board: rvClone(rec.start.board), hand: rvClone(rec.start.hand), eliminated: [...rec.start.eliminated], turn: rec.start.turn, moveCount: rec.start.moveCount, lastMove: null, gover: false };
+  review.start = rvClone(rec.start);
+  let p ={ board: rvClone(rec.start.board), hand: rvClone(rec.start.hand), eliminated: [...rec.start.eliminated], turn: rec.start.turn, moveCount: rec.start.moveCount, lastMove: null, gover: false };
   review.main = [p];
   review.mainMoves = [];
   rec.moves.forEach((m, i) => {
@@ -93,6 +94,18 @@ function exitReview(kick = true) {
 }
 
 function toggleReview() { reviewMode ? exitReview() : enterReview(); }
+
+// 表示している局面（本譜の途中でも変化の途中でも）から対局を再開する。棋譜はこの局面までの手を残して、そこから先を記録し直す
+function rvResumeHere() {
+  if (!reviewMode) return;
+  const k = review.idx;
+  if (review.line[k].gover) { setStatus('終局した局面からは指せません'); return; }
+  const rec = { start: review.start, human: humanPlayer,
+    moves: review.lineMoves.slice(0, k).map((m) => (m.mv ? { o: m.o, mv: m.mv, v: m.v } : { o: m.o, resign: true })) };
+  loadGameRecordText(JSON.stringify(rec), false);
+  setStatus(`▶ ${k}手目の局面から対局を再開しました　${PNAME_BASE[turn]}の番`);
+  if (!gover && turn !== humanPlayer && !eliminated[turn]) setTimeout(() => kickAI(), AI_DELAY_MS);
+}
 
 function showReviewPos(k) {
   k = Math.max(0, Math.min(review.line.length - 1, k));
@@ -407,7 +420,8 @@ async function pasteLoadKifu() {
   catch (e) { alert('クリップボードを読めませんでした。欄に直接貼り付けてください'); }
 }
 
-function loadGameRecordText(text) {
+// enter=false なら検討モードに入らず、そのまま対局を続けられる状態にする（rvResumeHere）
+function loadGameRecordText(text, enter = true) {
   let rec;
   try { rec = JSON.parse(text.trim()); } catch (e) { alert('読み込めません：「📋 棋譜をコピー」で出てくる形（JSON）ではありません'); return false; }
   if (!rec || !rec.start || !rec.start.board || !Array.isArray(rec.moves)) { alert('読み込めません：start（最初の局面）と moves（指し手）が必要です'); return false; }
@@ -453,7 +467,7 @@ function loadGameRecordText(text) {
   const who = Array.isArray(rec.players) ? '（' + rec.players.map((p, i) => PNAME_BASE[i].slice(0, 1) + ':' + p).join(' / ') + '）' : '';
   setStatus(`📥 ${rec.title || '棋譜'}を読み込みました（${n}手）` + (gover ? '　終局' : `　${PNAME_BASE[turn]}の番`) + who);
   closeLoadKifu();
-  if (n > 0 || gameRecord) enterReview();
+  if (enter && (n > 0 || gameRecord)) enterReview();
   return true;
 }
 
