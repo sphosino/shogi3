@@ -753,6 +753,7 @@ function applyAISetting(){
     AI_TIME_LIMIT_MS = thinkMs;
   }
   setCpuCollusion(cpuCollusion);   // 共闘の表示（学習AIのときは「共闘しません」）
+  if(ctx) render();                // 盤の名前の横の「CPU 中級 2秒」などを描き直す
 }
 window.addEventListener('DOMContentLoaded', () => {
   canvas = document.getElementById('c');

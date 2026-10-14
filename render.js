@@ -242,9 +242,20 @@ function drawPlayerLabels(){
     ctx.font='13px monospace';
     ctx.fillText(sub,x,y+19);
   }
-  drawLabel(PNAME[0]+(eliminated[0]?' ☠':''),`駒数: ${counts[0]}`,12,CH-30,PCOL[0],'left');
-  drawLabel(PNAME[1]+(eliminated[1]?' ☠':''),`駒数: ${counts[1]}`,12,22,PCOL[1],'left');
-  drawLabel(PNAME[2]+(eliminated[2]?' ☠':''),`駒数: ${counts[2]}`,CW-12,CH-30,PCOL[2],'right');
+  // 人以外の席には、指している相手（CPU の強さ／学習AI の重み）と考える時間を書く
+  const who=(o)=>{
+    if(o===humanPlayer&&!selfPlayMode) return '';
+    const d=DIFFICULTY_LEVELS[currentDifficulty]; if(!d) return '';
+    const sec=(d.net?netTimeMs:thinkMs)/1000+'秒';
+    if(d.net){
+      const m=window.LocalAI&&LocalAI.model?LocalAI.model.replace(/^pbig2-gen/,'世代'):'';
+      return `　学習AI${m?' '+m:''} ${sec}`;
+    }
+    return `　CPU ${d.label} ${sec}`;
+  };
+  drawLabel(PNAME[0]+(eliminated[0]?' ☠':''),`駒数: ${counts[0]}${who(0)}`,12,CH-30,PCOL[0],'left');
+  drawLabel(PNAME[1]+(eliminated[1]?' ☠':''),`駒数: ${counts[1]}${who(1)}`,12,22,PCOL[1],'left');
+  drawLabel(PNAME[2]+(eliminated[2]?' ☠':''),`駒数: ${counts[2]}${who(2)}`,CW-12,CH-30,PCOL[2],'right');
   // 直前の手を符号で表示
   if(lastMove&&lastMove.fugo){
     const col=PCOL[lastMove.o];
