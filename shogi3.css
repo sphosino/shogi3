@@ -1,17 +1,26 @@
-﻿
-/* --- 既存のスタイルを一部修正・追加 --- */
+﻿/* 三人将棋の見た目。また遊ぼ（mataasobo.com）にそろえた明るい見た目：クリーム色の地、白いカード、こげ茶の文字
+   盤（木目）と駒の色は render.js が描く。画面に直接書かれた暗い色（style="…"）は、いちばん下でまとめて明るくする */
+:root{
+  --bg:#fff7ec; --dot:#fde9cf; --card:#fffdf9; --ink:#4a2f22; --muted:#9a7462; --line:#f1dcc6;
+  --accent:#c2601a; --on:#ffe2bd; --on-line:#e08a3c;
+  --ui:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  --mincho:'Hiragino Mincho Pro','Yu Mincho','MS Mincho',serif;
+}
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  background: radial-gradient(ellipse at center, #1a0900 0%, #060200 100%);
-  display: flex; 
-  flex-direction: row; /* 横並びに変更 */
-  align-items: center; 
+  background-color:var(--bg);
+  background-image:radial-gradient(var(--dot) 18%,transparent 19%),radial-gradient(var(--dot) 18%,transparent 19%);
+  background-size:34px 34px;background-position:0 0,17px 17px;
+  color:var(--ink);
+  display: flex;
+  flex-direction: row; /* 横並び（せまい画面では縦） */
+  align-items: flex-start;
   justify-content: center;
-  min-height: 100vh; 
+  min-height: 100vh;
   user-select: none;
-  font-family: 'Hiragino Mincho Pro', 'Yu Mincho', 'MS Mincho', serif;
-  padding: 8px;
-  gap: 12px;
+  font-family: var(--ui);
+  padding: 16px;
+  gap: 16px;
 }
 
 /* 盤面中央エリア */
@@ -25,42 +34,45 @@ body {
 }
 
 #info {
-  color: #f0d090; font-size: 18px; margin: 6px 0;
-  letter-spacing: 2px; height: 28px; text-shadow: 0 1px 6px #0008;
+  color: var(--ink); font-size: 18px; margin: 6px 0;
+  letter-spacing: 2px; height: 28px; font-family: var(--mincho);
   font-weight: bold;
 }
 
 #canvas-wrap { width: 100%; }
-canvas { display: block; cursor: pointer; border-radius: 4px; width: 100%; height: auto; }
+canvas { display: block; cursor: pointer; border-radius: 18px; width: 100%; height: auto; box-shadow:0 4px 0 var(--line); }
 
 #btnRow { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 button {
-  padding: 8px 12px; background: #3a1500; color: #f0d090;
-  border: 1px solid #804010; font-size: 14px; cursor: pointer;
-  border-radius: 4px; letter-spacing: 1px; font-family: inherit;
-  transition: 0.2s;
+  padding: 8px 12px; background: var(--card); color: var(--ink);
+  border: 2px solid var(--line); font-size: 14px; cursor: pointer;
+  border-radius: 12px; letter-spacing: 1px; font-family: inherit; font-weight: 700;
+  box-shadow: 0 2px 0 var(--line);
+  transition: 0.15s;
 }
-button:hover { background: #5a2800; box-shadow: 0 0 10px rgba(128,64,16,0.5); }
+button:hover { border-color: var(--on-line); }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--on-line); outline-offset: 2px; }
+select { font-family: inherit; font-weight: 700; color: var(--ink); background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 6px 8px; }
 
-/* --- ルール説明エリア（左側に配置） --- */
+/* --- ルール説明エリア（左側） --- */
 #rules {
-  color: #d0b090; 
-  font-size: 13px; 
+  color: var(--ink);
+  font-size: 13px;
   text-align: left;
-  line-height: 1.8; 
-  width: 260px; /* 固定幅 */
-  background: rgba(40, 20, 0, 0.6);
+  line-height: 1.8;
+  width: 280px;
+  background: var(--card);
   padding: 20px;
-  border-left: 3px solid #804010;
-  border-radius: 4px;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 3px 0 var(--line);
 }
 
 #rules h3 {
-  color: #ffaa44;
+  color: var(--accent);
   font-size: 15px;
   margin-bottom: 10px;
-  border-bottom: 1px solid #503010;
+  border-bottom: 1px solid var(--line);
   padding-bottom: 5px;
   display: flex;
   align-items: center;
@@ -70,28 +82,28 @@ button:hover { background: #5a2800; box-shadow: 0 0 10px rgba(128,64,16,0.5); }
 #rules ul {
   margin-left: 18px;
   margin-bottom: 10px;
-  color: #b09070;
+  color: var(--muted);
 }
 
-.highlight { color: #ffcc66; font-weight: bold; }
-.warning { color: #ff6655; font-size: 12px; margin-top: 15px; border-top: 1px solid #503010; padding-top: 10px; }
+.highlight { color: var(--accent); font-weight: bold; }
+.warning { color: #c7372f; font-size: 12px; margin-top: 15px; border-top: 1px solid var(--line); padding-top: 10px; }
 
-/* 棋譜パネル（game-container内、ボタン下） */
+/* 棋譜パネル（ボタンの下） */
 #kifu-panel {
   margin-top: 10px;
   width: 100%;
-  background: rgba(40,20,0,0.5);
-  border: 1px solid #804010;
-  border-radius: 4px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 14px;
   padding: 8px 12px;
 }
 #kifu-header {
-  color: #ffaa44;
+  color: var(--accent);
   font-size: 13px;
   font-weight: bold;
   margin-bottom: 6px;
   padding-bottom: 4px;
-  border-bottom: 1px solid #503010;
+  border-bottom: 1px solid var(--line);
 }
 #kifu-list {
   display: flex;
@@ -99,50 +111,63 @@ button:hover { background: #5a2800; box-shadow: 0 0 10px rgba(128,64,16,0.5); }
   gap: 2px 8px;
   max-height: 120px;
   overflow-y: auto;
-  font-family: 'Hiragino Mincho Pro','Yu Mincho',serif;
+  font-family: var(--mincho);
   font-size: 12px;
   line-height: 1.8;
 }
 #kifu-list div { white-space: nowrap; }
-#kifu-list div.latest { font-weight: bold; background: rgba(255,200,50,0.15); border-radius: 2px; padding: 0 3px; }
+#kifu-list div.latest { font-weight: bold; background: var(--on); border-radius: 4px; padding: 0 3px; }
 
-/* スマホ等で縦に並べる対応 */
+/* せまい画面では縦に並べる */
 @media (max-width: 1100px) {
-  body { flex-direction: column; }
+  body { flex-direction: column; align-items: center; }
   #rules { width: 100%; max-width: 760px; order: 2; box-sizing: border-box; }
 }
 
-/* 難易度UIバー */
+/* 難易度・ルールの設定 */
 #diffRow {
   margin-top: 8px;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: rgba(20,8,0,0.55);
-  border: 1px solid #503010;
-  border-radius: 6px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 14px;
   padding: 10px 14px;
 }
 #diffRow button {
   padding: 8px 12px;
   font-size: 13px;
   min-height: 36px;
-  background: #2a1200;
-  color: #c0a060;
-  border: 1px solid #804010;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: 0.15s;
   letter-spacing: 0.5px;
 }
-#diffRow button:hover { background: #4a2500; color: #ffe090; }
 
-/* スマホ向け細かい調整 */
+.foot { text-align:center; font-size:.8rem; color:var(--muted); margin:14px 0 4px; }
+.foot a { color: inherit; }
+
+/* スマホ向け */
 @media (max-width: 480px) {
+  body { padding: 10px; }
   #info { font-size: 15px; letter-spacing: 1px; }
   #btnRow button { padding: 10px 10px; font-size: 13px; }
   #diffRow button { padding: 10px 10px; min-height: 40px; font-size: 13px; }
   #diffRow { padding: 10px; }
   #col-desc { font-size: 13px !important; }
 }
+
+/* ===== 画面に直接書かれた暗い色を、明るい見た目に置きかえる =====
+   検討・棋譜の読みこみ・盤面編集・自己対局などのパネルは、もともと黒い地に明るい文字で書かれている */
+[style*="background:#0"],[style*="background:#1"],[style*="background:#2"],[style*="background:#3"],[style*="background:#5"],[style*="background:#6"]{
+  background: var(--card) !important; border-color: var(--line) !important;
+}
+/* JS が style をさわると書き方（rgb(…)）が変わって上の指定が効かなくなるので、パネルは id でも明るくする */
+#think-panel,#prev-think-panel,#load-kifu,#review-panel,#edit-panel,#sp-panel{ background:var(--card) !important; border-color:var(--line) !important; border-width:2px !important; border-radius:14px !important; color:var(--ink) !important }
+#load-kifu-text{ background:#fff !important; color:var(--ink) !important; border:2px solid var(--line) !important; border-radius:10px }
+[style*="color:#cde"],[style*="color:#ccc"],[style*="color:#9fd"],[style*="color:#d99"],[style*="color:#ffd890"],[style*="color:#ffe090"],[style*="color:#aaaaff"],[style*="color:#88aaff"],[style*="color:#ff8866"]{ color: var(--ink) !important; }
+[style*="color:#aaa"],[style*="color:#888"],[style*="color:#9ab"],[style*="color:#678"],[style*="color:#778"],[style*="color:#666"],[style*="color:#b09070"]{ color: var(--muted) !important; }
+[style*="color:#ffaa44"],[style*="color:#ffcc44"]{ color: var(--accent) !important; }
+[style*="color:#33bb55"],[style*="color:#33cc55"]{ color: #23944a !important; }
+/* 選んでいるボタン（ui.js が class="on" をつける） */
+button.on{ background: var(--on) !important; border-color: var(--on-line) !important; color: var(--ink) !important; }
+#review-graph{ border-color:var(--line) !important; }

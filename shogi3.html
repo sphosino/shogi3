@@ -4,6 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>三人将棋</title>
+<meta name="description" content="9×9の盤で、3人が1局を指す将棋。ルールだけから学習したAIとも対局できます。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="三人将棋">
+<meta property="og:description" content="9×9の盤で、3人が1局を指す将棋。ルールだけから学習したAIとも対局できます。">
+<meta property="og:url" content="https://mataasobo.com/shogi3/">
+<meta property="og:image" content="https://mataasobo.com/img/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.png" type="image/png">
+<script>
+/* アクセス解析（Google アナリティクス）。mataasobo.com だけで動かし、自分の閲覧は数えない
+   自分の閲覧：一度 ?me を付けて開くと、このブラウザは数えなくなる（?me=off で戻す。mataasobo.com のどのページでも同じ） */
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
+(function(){
+  let me=false;
+  try{const q=new URLSearchParams(location.search);
+    if(q.has('me')){const off=q.get('me')==='off';if(off)localStorage.removeItem('mataasobo-me');else localStorage.setItem('mataasobo-me','1');
+      alert(off?'このブラウザも数えるように戻しました':'このブラウザでの閲覧は、もう数えません')}
+    me=!!localStorage.getItem('mataasobo-me')}catch(e){}
+  if(me||location.hostname!=='mataasobo.com')return;
+  const s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id=G-E7FT1414CV';document.head.appendChild(s);
+  gtag('js',new Date());gtag('config','G-E7FT1414CV');
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap">
 <link rel="stylesheet" href="shogi3.css">
 </head>
 <body>
@@ -64,7 +90,7 @@
       <button id="load-kifu-btn" onclick="openLoadKifu()" title="「📋 棋譜をコピー」で出てきた棋譜を貼り付けて読み込み、検討します">📥 棋譜を読み込む</button>
       <button id="games-btn" onclick="location.href='web/games.html'" title="AIが自己対局・評価対局で指した棋譜の一覧">📚 AIの棋譜集</button>
       <button id="copy-kifu-btn" onclick="copyGameRecord()" title="対局の最初の局面と全部の手（学習AIの勝率予想つき）をクリップボードにコピーします">📋 棋譜をコピー</button>
-      <button id="hb0" onclick="setHumanPlayerFromEdit(0)" style="background:#6a3500">🔵 青将で対局</button>
+      <button id="hb0" class="on" onclick="setHumanPlayerFromEdit(0)">🔵 青将で対局</button>
       <button id="hb1" onclick="setHumanPlayerFromEdit(1)">🔴 赤将で対局</button>
       <button id="hb2" onclick="setHumanPlayerFromEdit(2)">🟢 緑将で対局</button>
       <button id="view-btn" onclick="setView(viewPlayer===2?0:viewPlayer+1)">👁 視点切替</button>
@@ -104,6 +130,7 @@
       </div>
     </div>
       <!-- 難易度行 -->
+    <div id="diffRow">
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:center;width:100%;">
         <span id="diff-label" style="color:#ffaa44;font-size:13px;letter-spacing:1px;">⚔️ 難易度: CPU 中級（2秒）</span>
         <button id="diff-cpu" onclick="setAIKind('cpu')" title="手作りのAI（駒の価値で読む）。考える時間で強さが変わります：0.5秒＝入門、1秒＝初級、2秒＝中級、4秒以上＝上級">⚔️ CPU</button>
@@ -176,6 +203,7 @@
       <div id="kifu-header">📜 棋譜</div>
       <div id="kifu-list"></div>
     </div>
+    <p class="foot"><a href="/">また遊ぼ</a>・<a href="/privacy.html">プライバシーポリシー</a></p>
   </div>
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.webgpu.min.js"></script>
 <script src="web/ai.js"></script>

@@ -4,7 +4,7 @@ function render(){
 
   // 背景
   const bg=ctx.createRadialGradient(CW/2,CH/2,0,CW/2,CH/2,550);
-  bg.addColorStop(0,'#1c0a00');bg.addColorStop(1,'#060200');
+  bg.addColorStop(0,'#fffaf2');bg.addColorStop(1,'#f8e8cf'); // また遊ぼのクリーム色
   ctx.fillStyle=bg;ctx.fillRect(0,0,CW,CH);
 
   drawBoard();
@@ -17,7 +17,7 @@ function render(){
 }
 
 function drawBoard(){
-  ctx.shadowColor='#0009';ctx.shadowBlur=20;ctx.shadowOffsetX=4;ctx.shadowOffsetY=5;
+  ctx.shadowColor='#5b2f2044';ctx.shadowBlur=18;ctx.shadowOffsetX=0;ctx.shadowOffsetY=6;
   const g=ctx.createLinearGradient(BX,BY,BX+9*CS,BY+9*CS);
   g.addColorStop(0,'#edd88a');g.addColorStop(0.5,'#d4a848');g.addColorStop(1,'#c49030');
   ctx.fillStyle=g;ctx.fillRect(BX,BY,9*CS,9*CS);

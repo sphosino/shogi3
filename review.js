@@ -1,4 +1,4 @@
-// ── 検討モード（Lizzie 風）──
+﻿// ── 検討モード（Lizzie 風）──
 // 対局の棋譜（gameRecord：最初の局面と全部の手）を並べ直して、好きな局面に戻れる。
 // 学習AIで局面を解析すると、候補手を盤の上に「勝率・読んだ割合」つきで表示し、勝率の推移をグラフにする。
 // 検討中は手番の人の駒を動かして変化を試せる（候補手の丸をクリックしても指せる）。「本譜に戻る」で実際の手順に戻る。
@@ -265,7 +265,7 @@ function rvUpdatePanel() {
   const vEl = rvEl('review-var');
   if (b !== null) {
     vEl.innerHTML = `<span style="color:#fc8;">変化（${b}手目から）：</span>` + review.lineMoves.slice(b).map((m, j) =>
-      `<span onclick="showReviewPos(${b + j + 1})" style="cursor:pointer;${b + j + 1 === k ? 'background:#3a2a10;' : ''}color:${PCOL[m.o]}">${b + j + 1}.${m.text}</span>`).join(' ') +
+      `<span onclick="showReviewPos(${b + j + 1})" style="cursor:pointer;${b + j + 1 === k ? 'background:#ffe2bd;' : ''}color:${PCOL[m.o]}">${b + j + 1}.${m.text}</span>`).join(' ') +
       ` <button onclick="rvBackToMain()">↩ 本譜に戻る</button>`;
   } else vEl.innerHTML = '';
   rvRenderHand();
@@ -381,12 +381,12 @@ function rvDrawGraph() {
   const cv = rvEl('review-graph'); if (!cv) return;
   const W = cv.width, H = cv.height, g = cv.getContext('2d'), N = review.line.length - 1;
   g.clearRect(0, 0, W, H);
-  g.fillStyle = '#0b0b16'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#fffaf2'; g.fillRect(0, 0, W, H);
   const X = (k) => (N ? k / N : 0) * (W - 8) + 4, Y = (v) => H - v * (H - 6) - 3;
-  if (review.branch !== null) { g.fillStyle = '#1e1608'; g.fillRect(X(review.branch), 0, W - X(review.branch), H); }   // 変化の部分
-  g.strokeStyle = '#2a2a44'; g.lineWidth = 1;
+  if (review.branch !== null) { g.fillStyle = '#fbe9cf'; g.fillRect(X(review.branch), 0, W - X(review.branch), H); }   // 変化の部分
+  g.strokeStyle = '#f1dcc6'; g.lineWidth = 1;
   [0.25, 0.5, 0.75].forEach((y) => { g.beginPath(); g.moveTo(0, H * y); g.lineTo(W, H * y); g.stroke(); });
-  g.fillStyle = '#556'; g.font = '10px sans-serif'; g.fillText('50%', 3, H * 0.5 - 2);
+  g.fillStyle = '#9a7462'; g.font = '10px sans-serif'; g.fillText('50%', 3, H * 0.5 - 2);
   for (let o = 0; o < 3; o++) {
     g.strokeStyle = PCOL[o]; g.lineWidth = 1.8; g.beginPath();
     let started = false;
@@ -398,7 +398,7 @@ function rvDrawGraph() {
   }
   g.fillStyle = '#4df';            // 解析した局面に小さな印
   review.line.forEach((p, k) => { if (review.analysis[rvKey(p)]) g.fillRect(X(k) - 1, H - 4, 2, 4); });
-  g.strokeStyle = '#fff'; g.lineWidth = 1; g.beginPath(); g.moveTo(X(review.idx), 0); g.lineTo(X(review.idx), H); g.stroke();
+  g.strokeStyle = '#4a2f22'; g.lineWidth = 1; g.beginPath(); g.moveTo(X(review.idx), 0); g.lineTo(X(review.idx), H); g.stroke();
 }
 
 function rvGraphClick(e) {
@@ -431,7 +431,7 @@ function loadGameRecordText(text, enter = true) {
   setKeepAllPieces(rec.start.rule === undefined ? 'all' : rec.start.rule);
   if (typeof rec.human === 'number') {        // 「あなた」の席も棋譜のとおりに（対局は始めない）
     humanPlayer = rec.human; viewPlayer = rec.human;
-    [0, 1, 2].forEach((i) => { PNAME[i] = PNAME_BASE[i]; const b = rvEl('hb' + i); if (b) b.style.background = i === rec.human ? '#6a3500' : '#3a1500'; });
+    [0, 1, 2].forEach((i) => { PNAME[i] = PNAME_BASE[i]; const b = rvEl('hb' + i); if (b) b.classList.toggle('on', i === rec.human); });
     PNAME[rec.human] = PNAME_BASE[rec.human] + '(あなた)';
   }
   const s = rvClone(rec.start);
@@ -498,8 +498,8 @@ window.addEventListener('keydown', (e) => {
 
 (function () {
   const st = document.createElement('style');
-  st.textContent = '#kifu-list > div { cursor: pointer; } #kifu-list > div.review-cur { background: #1d3a4a; outline: 1px solid #4df; }' +
-    '#review-panel button { font-size: 12px; padding: 3px 10px; background: #0a1420; border: 1px solid #556; color: #cde; border-radius: 4px; cursor: pointer; }' +
-    '#review-cands > div:hover { background: #10202c; }';
+  st.textContent = '#kifu-list > div { cursor: pointer; } #kifu-list > div.review-cur { background: #ffe2bd; outline: 1px solid #e08a3c; }' +
+    '#review-panel button { font-size: 12px; padding: 3px 10px; background: #fffdf9; border: 2px solid #f1dcc6; color: #4a2f22; border-radius: 8px; box-shadow: none; cursor: pointer; }' +
+    '#review-cands > div:hover { background: #fff1de; }';
   document.head.appendChild(st);
 })();

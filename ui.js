@@ -15,7 +15,7 @@ function renderKifu(){
     return '<div class="'+cls+'"'+click+'>'+
       '<span style="color:#806040;font-size:10px;">'+(i+1)+'.</span> '+
       '<span style="color:'+k.col+'">'+k.name+'</span> '+
-      '<span style="color:#e8d095;">'+k.fugo+'</span>'+
+      '<span style="color:#4a2f22;">'+k.fugo+'</span>'+
       '</div>';
   }).join('');
   // 現在局表示中のみ自動スクロール
@@ -39,7 +39,7 @@ function setHumanPlayer(p){
   PNAME[p]=PNAME_BASE[p]+'(あなた)';
   [0,1,2].forEach(i=>{
     const btn=document.getElementById('hb'+i);
-    if(btn) btn.style.background=i===p?'#6a3500':'#3a1500';
+    if(btn) btn.classList.toggle('on',i===p);
   });
   if(editMode){
     gover=false; moveCount=0; kifu=[]; renderKifu(); turn=0; winType='normal'; lastMove=null; humanEliminated=eliminated[p]; gameGen++; render(); if(p!==0) setTimeout(()=>kickAI(), AI_DELAY_MS);
@@ -448,9 +448,7 @@ function toggleEditMode(){
   if(editMode){
     // 現在の局面を編集用にコピー
     editElim = eliminated.slice();
-    btn.style.background = '#2a2a6a';
-    btn.style.borderColor = '#aaaaff';
-    btn.style.color = '#ffffff';
+    btn.classList.add('on');
     btn.textContent = '✏️ 編集中...';
     panel.style.display = 'block';
     // 脱落チェックボックス同期
@@ -462,9 +460,7 @@ function toggleEditMode(){
     renderEditHand();
     gover = false; // 編集中はゲームオーバー解除
   } else {
-    btn.style.background = '#1a1a3a';
-    btn.style.borderColor = '#8888ff';
-    btn.style.color = '#aaaaff';
+    btn.classList.remove('on');
     btn.textContent = '✏️ 盤面編集';
     panel.style.display = 'none';
     editSelected = null;
@@ -631,7 +627,7 @@ function setHumanPlayerFromEdit(p){
     PNAME[p]=PNAME_BASE[p]+'(あなた)';
     [0,1,2].forEach(i=>{
       const btn=document.getElementById('hb'+i);
-      if(btn) btn.style.background=i===p?'#6a3500':'#3a1500';
+      if(btn) btn.classList.toggle('on',i===p);
     });
     gover=false; moveCount=0; kifu=[]; renderKifu();
     turn=0; winType='normal'; lastMove=null;
@@ -651,16 +647,10 @@ function setCpuCollusion(val){
   const offBtn = document.getElementById('col-off');
   const desc   = document.getElementById('col-desc');
   if(onBtn){
-    onBtn.style.background  = val  ? '#7a3a00' : '#2a1200';
-    onBtn.style.border      = val  ? '1px solid #ffaa44' : '1px solid #804010';
-    onBtn.style.color       = val  ? '#ffe090' : '#c0a060';
-    onBtn.style.boxShadow   = val  ? '0 0 10px rgba(255,170,50,0.4)' : 'none';
+    onBtn.classList.toggle('on',!!val);
   }
   if(offBtn){
-    offBtn.style.background = !val ? '#003a70' : '#2a1200';
-    offBtn.style.border     = !val ? '1px solid #44aaff' : '1px solid #804010';
-    offBtn.style.color      = !val ? '#aaddff' : '#c0a060';
-    offBtn.style.boxShadow  = !val ? '0 0 10px rgba(50,150,255,0.4)' : 'none';
+    offBtn.classList.toggle('on',!val);
   }
   if(desc){
     desc.innerHTML = val
@@ -672,13 +662,13 @@ function setCpuCollusion(val){
   if(warn){
     warn.innerHTML = val
       ? '⚠️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は共闘してあなたを狙ってきます。'
-      : '⚔️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は<span style="color:#ffcc44">それぞれ自分の勝利</span>を目指します。';
+      : '⚔️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は<span style="color:#c2601a">それぞれ自分の勝利</span>を目指します。';
   }
   // 学習AIは共闘しない（共闘は手作りCPUだけの設定）。学習AIのときはボタンを押せなくして、そう書く
   const net = typeof aiKind !== 'undefined' && aiKind === 'net';
   [onBtn, offBtn].forEach(b=>{ if(b && !selfPlayMode){ b.disabled = net; b.style.opacity = net ? '0.35' : '1'; } });
   if(net){
-    const t = '🧠 学習AIは共闘しません。いつも<span style="color:#ffcc44">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）';
+    const t = '🧠 学習AIは共闘しません。いつも<span style="color:#c2601a">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）';
     if(desc) desc.innerHTML = t;
     if(warn) warn.innerHTML = t;
   }
@@ -694,25 +684,16 @@ function setKeepAllPieces(val){
     const btn = document.getElementById(id);
     if(!btn) return;
     const active = val === v;
-    btn.style.background = active ? '#004a00' : '#2a1200';
-    btn.style.border     = active ? '1px solid #44ff88' : '1px solid #804010';
-    btn.style.color      = active ? '#aaffcc' : '#c0a060';
-    btn.style.boxShadow  = active ? '0 0 10px rgba(50,255,100,0.4)' : 'none';
+    btn.classList.toggle('on',active);
   });
-  // 消滅ありだけ色を変える
-  if(offBtn && val === false){
-    offBtn.style.background = '#3a1a00';
-    offBtn.style.border     = '1px solid #ffaa44';
-    offBtn.style.color      = '#ffe090';
-    offBtn.style.boxShadow  = '0 0 10px rgba(255,170,50,0.4)';
-  }
+
   if(desc){
     if(val === 'all' || val === true)
       desc.innerHTML = '取った駒は<span class="highlight">常に持ち駒</span>になります。';
     else if(val === 'next')
       desc.innerHTML = '取った駒は<span class="highlight">第三者の持ち駒</span>になります🎁（2人になったら取った側が受け取り）';
     else
-      desc.innerHTML = '通常、取った駒は<span class="highlight">消滅</span>します。以下の場合のみ持ち駒になります。<ul style="margin:6px 0 0 16px;color:#b09070;font-size:12px;line-height:1.8;"><li><span class="highlight">脱落したプレイヤーがいる</span>とき</li><li><span class="highlight">成り駒</span>を取ったとき</li><li>相手より駒が<span class="highlight">3個以上少ない</span>とき</li><li><span class="highlight">玉が5段目以上</span>に進んでいる相手から取ったとき</li></ul>';
+      desc.innerHTML = '通常、取った駒は<span class="highlight">消滅</span>します。以下の場合のみ持ち駒になります。<ul style="margin:6px 0 0 16px;color:#9a7462;font-size:12px;line-height:1.8;"><li><span class="highlight">脱落したプレイヤーがいる</span>とき</li><li><span class="highlight">成り駒</span>を取ったとき</li><li>相手より駒が<span class="highlight">3個以上少ない</span>とき</li><li><span class="highlight">玉が5段目以上</span>に進んでいる相手から取ったとき</li></ul>';
   }
 }
 
@@ -728,10 +709,7 @@ function setDifficulty(level){
     const btn=document.getElementById('diff-'+k);
     if(btn){
       const active = (k==='net') === !!cfg.net;
-      btn.style.background   = active ? '#7a3a00' : '#2a1200';
-      btn.style.border       = active ? '1px solid #ffaa44' : '1px solid #804010';
-      btn.style.color        = active ? '#ffe090' : '#c0a060';
-      btn.style.boxShadow    = active ? '0 0 10px rgba(255,170,50,0.4)' : 'none';
+      btn.classList.toggle('on',active);
     }
   });
   // 難易度ラベル更新
