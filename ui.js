@@ -745,4 +745,9 @@ window.addEventListener('DOMContentLoaded', () => {
   setCpuCollusion(false);
   setKeepAllPieces('all');
   setHumanPlayer(0);
+  // みんなと指した対局を検討する（room.html の「この対局を検討する」が棋譜を置いていく）
+  if(location.hash==='#review'){
+    let t=null; try{ t=localStorage.getItem('shogi3-review'); localStorage.removeItem('shogi3-review'); }catch(e){}
+    if(t) loadGameRecordText(t);
+  }
 });

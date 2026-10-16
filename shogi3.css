@@ -171,3 +171,6 @@ select { font-family: inherit; font-weight: 700; color: var(--ink); background: 
 /* 選んでいるボタン（ui.js が class="on" をつける） */
 button.on{ background: var(--on) !important; border-color: var(--on-line) !important; color: var(--ink) !important; }
 #review-graph{ border-color:var(--line) !important; }
+/* 「みんなと指す」（room.html）への入口 */
+.online-link{display:flex;align-items:baseline;justify-content:center;gap:10px;flex-wrap:wrap;width:100%;margin-bottom:8px;padding:10px 14px;border-radius:14px;background:var(--accent);color:#fff;font-weight:900;font-size:16px;text-decoration:none;box-shadow:0 3px 0 #8d4410}
+.online-link small{font-weight:500;font-size:12px;opacity:.9}
