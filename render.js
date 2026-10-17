@@ -182,8 +182,10 @@ function drawHandRow(o, side){
     uh.forEach(({p,n},i)=>{
       const cx=startX+i*sp+sp/2, cy=BY+9*CS+44; // 下の「直前の手」の文字とくっつかないように
       const isSel=selHand&&o===humanPlayer&&selected===i;
-      if(isSel){ctx.fillStyle='rgba(255,255,80,0.25)';ctx.fillRect(cx-25,cy-26,50,50);}
-      drawPieceAt(cx,cy,{p,o,pr:false},true);
+      // 選んでいる持ち駒：オレンジの枠で囲み、少し持ち上げて描く
+      if(isSel){ctx.save();ctx.beginPath();ctx.roundRect(cx-26,cy-32,52,52,10);ctx.fillStyle='rgba(194,96,26,0.18)';ctx.fill();
+        ctx.strokeStyle='#c2601a';ctx.lineWidth=3;ctx.stroke();ctx.restore();}
+      drawPieceAt(cx,isSel?cy-6:cy,{p,o,pr:false},true);
       if(n>1){ctx.fillStyle=col;ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.fillText('×'+n,cx+18,cy+18);}
     });
   } else if(side==='top'){
