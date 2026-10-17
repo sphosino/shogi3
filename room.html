@@ -58,6 +58,11 @@ label.check{flex-direction:row;align-items:center;font-weight:500}
 .seat .on{font-size:.75rem;color:var(--muted)}.seat .on.y{color:#23944a}
 .roomrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-decoration:none;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:#fff}
 .roomrow .who{flex:1;font-weight:700;min-width:0}
+.status{display:flex;flex-direction:column;gap:2px;background:var(--on);border:2px solid var(--on-line);border-radius:12px;padding:10px 12px}
+.status b{font-size:1.05rem}.status span{font-size:.82rem;color:var(--muted)}
+.waiting{color:var(--accent);animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.waiting{animation:none}}
 .tag{font-size:.72rem;font-weight:700;border-radius:999px;padding:1px 8px;background:var(--line);color:var(--muted)}
 .tag.wait{background:#ffe2bd;color:var(--accent)}.tag.join{background:#dff3e4;color:#23944a}
 .seatsm{font-size:.78rem;display:flex;gap:4px;flex-wrap:wrap}
@@ -111,6 +116,6 @@ label.check{flex-direction:row;align-items:center;font-weight:500}
 <script src="engine.js"></script>
 <script src="render.js"></script>
 <script src="share.js?v=3"></script>
-<script src="room.js"></script>
+<script src="room.js?v=2"></script>
 </body>
 </html>

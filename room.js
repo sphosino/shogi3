@@ -291,7 +291,7 @@ function renderLobby(show) {
   if (!RV) h = `<h2>${roomErr ? '部屋が見つかりません' : '部屋につないでいます…'}</h2>${roomErr ? `<p class="note">${esc(roomErr)}</p><a class="btn primary" href="room.html">部屋の一覧へ</a>` : ''}`;
   else {
     const url = location.origin + location.pathname + '?room=' + RV.id, you = RV.you, lobby = RV.phase === 'lobby', host = you === 0;
-    const seats = RV.seats.map((s, i) => `<div class="seat"><span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span><span class="nm${s.empty ? ' empty' : ''}">${COLOR[i]}：${s.empty ? (lobby ? 'あき（始めたらCPU）' : 'CPU') : esc(s.name) + (i === you ? '（あなた）' : '')}</span><span class="on${s.online ? ' y' : ''}">${s.empty ? '' : s.online ? '● いる' : 'るす'}</span></div>`).join('');
+    const seats = RV.seats.map((s, i) => `<div class="seat"><span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span><span class="nm${s.empty ? ' empty' : ''}">${COLOR[i]}：${s.empty ? (lobby ? 'あき（始めたらCPU）' : 'CPU') : esc(s.name) + (i === you ? '（あなた）' : '')}</span><span class="on${s.online ? ' y' : ''}">${s.empty ? (lobby ? '<span class="waiting">待っています…</span>' : '') : s.online ? '● いる' : 'るす'}</span></div>`).join('');
     const nameBox = `<label>あなたの名前<input id="myName" maxlength="8" placeholder="なまえ" value="${esc(you >= 0 ? RV.seats[you].name : myName())}"></label>`;
     const ruleRow = `<label>取った駒${host ? '' : '（部屋を作った人が決めます）'}<div class="choices">${RULES.map(([k, n, d]) => `<button type="button" data-rule="${k}" class="${RV.rule === k ? 'on' : ''}"${host ? '' : ' disabled'}>${n}<small>${d}</small></button>`).join('')}</div></label>`;
     const limitRow = `<label>1手の持ち時間${host ? '' : '（部屋を作った人が決めます）'}<div class="choices">${LIMITS.map((t) => `<button type="button" data-sec="${t}" class="${RV.limit === t ? 'on' : ''}"${host ? '' : ' disabled'}>${t < 60 ? t + '秒' : t / 60 + '分'}</button>`).join('')}</div></label>`;
@@ -310,7 +310,13 @@ function renderLobby(show) {
         : `<p class="note">${RV.kicked ? '時間切れが続いたので、CPUが代わりに指しています。CPUと交代すれば、続きから指せます' : 'もう対局が始まっています。CPUの席と交代して、途中から参加できます'}</p>` + nameBox
           + '<div class="btnrow"><button class="btn primary" id="join" type="button">CPUと交代して参加する</button><button class="btn" id="watch" type="button">見るだけ</button></div>';
     } else body = `<p class="note">この部屋は満員です${lobby ? '' : '。対局を見ることはできます'}</p><div class="btnrow">${lobby ? '' : '<button class="btn primary" id="watch" type="button">見るだけ</button>'}<a class="btn" href="room.html">部屋の一覧へ</a></div>`;
-    h = `<h2>${lobby ? (RV.seats[0].empty ? '' : esc(RV.seats[0].name) + ' の部屋') : '対局中です'}</h2><div class="seats">${seats}</div>${body}`;
+    // 今の状態を、いちばん上に大きく出す（人待ちだと分かるように）
+    const n = RV.seats.filter((s) => !s.empty).length;
+    const status = !lobby ? '' : you === 0
+      ? `<div class="status"><b>⏳ ともだちを待っています（${n}/3人）</b><span>下のリンクを送って呼ぼう。誰も来なくても「はじめる」でCPUと指せます</span></div>`
+      : you > 0 ? `<div class="status"><b>⏳ ${esc(RV.seats[0].name)} さんが始めるのを待っています（${n}/3人）</b><span>そろったら、${esc(RV.seats[0].name)} さんが「はじめる」を押します</span></div>` : '';
+    document.title = (lobby && you >= 0 ? '（人待ち）' : '') + '三人将棋 みんなと指す｜また遊ぼ';
+    h = `<h2>${lobby ? (RV.seats[0].empty ? '' : esc(RV.seats[0].name) + ' の部屋') : '対局中です'}</h2>${status}<div class="seats">${seats}</div>${body}`;
   }
   if (h === lobbyHTML && !el.hidden) return; // 同じなら描き直さない（入力中の名前が消えないように）
   const focused = document.activeElement && document.activeElement.id === 'myName', typed = focused ? document.activeElement.value : null;
