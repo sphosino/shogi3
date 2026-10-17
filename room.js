@@ -273,16 +273,32 @@ function draw() {
     sb.innerHTML = STAMPS.map(([k, t]) => `<button type="button" data-k="${k}">${t}</button>`).join('');
     sb.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { send({ t: 'stamp', k: b.dataset.k }); showStamp(RV.you, b.dataset.k); }));
   } else if (RV.you < 0) sb.innerHTML = '';
+  // CPU の席があるあいだは、対局中でもともだちを呼べる（CPU の席と交代して途中から入れる）
+  const canInvite = RV.you >= 0 && !st.over && RV.seats.some((s) => s.empty);
   $('gameBtns').innerHTML = RV.you >= 0
-    ? `${st.over || st.elim[RV.you] ? '' : '<button class="btn" type="button" id="resign">投了</button>'}<button class="btn" type="button" id="leave">部屋を出る</button>`
+    ? `${canInvite ? '<button class="btn" type="button" id="invite">👥 ともだちを呼ぶ</button>' : ''}${st.over || st.elim[RV.you] ? '' : '<button class="btn" type="button" id="resign">投了</button>'}<button class="btn" type="button" id="leave">部屋を出る</button>`
     : RV.seats.some((s) => s.empty) ? '<button class="btn primary" type="button" id="joinNow">CPUと交代して参加する</button>' : '';
   on('resign', () => { if ($('resign').dataset.sure) { send({ t: 'resign', game: RV.game }); return; } $('resign').dataset.sure = 1; $('resign').textContent = 'ほんとうに投了する'; });
   on('leave', () => { send({ t: 'leave' }); location.href = 'room.html'; });
   on('joinNow', () => { watching = false; send({ t: 'join', name: myName() || 'ゲスト' }); });
+  on('invite', () => { inviteOpen = !inviteOpen; renderInvite(canInvite); });
+  renderInvite(canInvite);
   render();
   if (RV.phase === 'over') renderResult();
 }
 const on = (id, f) => { const b = $(id); if (b) b.addEventListener('click', f); };
+// 対局中にともだちを呼ぶ欄（手が指されるたびに描き直さないよう、gameBtns の外に置く）
+let inviteOpen = false;
+function renderInvite(can) {
+  const el = $('invitePanel'), show = inviteOpen && can;
+  el.hidden = !show;
+  if (!show || el.childElementCount) return;
+  const url = location.origin + location.pathname + '?room=' + RV.id, msg = '三人将棋を指してるよ！CPUの席と交代して入ってきて ' + url;
+  el.innerHTML = `<p class="note">空いた席（CPU）に、ともだちが<b>途中から交代して</b>入れます。このリンクを送ってください。</p>
+    <div class="invite"><input id="inv2" readonly value="${esc(url)}"><button class="btn" id="copy2" type="button">コピー</button></div>
+    <div class="btnrow"><a class="btn" href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">LINEで送る</a><a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Xで呼ぶ</a></div>`;
+  on('copy2', () => { const i = $('inv2'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast('コピーしました'), () => { document.execCommand('copy'); toast('コピーしました'); }); });
+}
 
 function renderLobby(show) {
   const el = $('lobby');
@@ -313,7 +329,7 @@ function renderLobby(show) {
     // 今の状態を、いちばん上に大きく出す（人待ちだと分かるように）
     const n = RV.seats.filter((s) => !s.empty).length;
     const status = !lobby ? '' : you === 0
-      ? `<div class="status"><b>⏳ ともだちを待っています（${n}/3人）</b><span>下のリンクを送って呼ぼう。誰も来なくても「はじめる」でCPUと指せます</span></div>`
+      ? `<div class="status"><b>⏳ ともだちを待っています（${n}/3人）</b><span>下のリンクを送って呼ぼう。そろわなくても「はじめる」でCPUと指せて、始めたあとも、ともだちはCPUの席と交代して途中から入れます</span></div>`
       : you > 0 ? `<div class="status"><b>⏳ ${esc(RV.seats[0].name)} さんが始めるのを待っています（${n}/3人）</b><span>そろったら、${esc(RV.seats[0].name)} さんが「はじめる」を押します</span></div>` : '';
     document.title = (lobby && you >= 0 ? '（人待ち）' : '') + '三人将棋 みんなと指す｜また遊ぼ';
     h = `<h2>${lobby ? (RV.seats[0].empty ? '' : esc(RV.seats[0].name) + ' の部屋') : '対局中です'}</h2>${status}<div class="seats">${seats}</div>${body}`;
