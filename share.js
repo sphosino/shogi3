@@ -44,7 +44,9 @@ const Share = (() => {
     return place ? `三人将棋で、${opp}に挑んで${place}位でした（${color}・${n}手）` : `三人将棋で、${opp}に負けた…（${color}・${SEAT[winner]}が${how}で勝ち・${n}手）`;
   }
   function update() {
-    const show = gover && winner >= 0 && humanPlayer >= 0 && !selfPlayMode && moveCount > 0 && gameGen !== skipGen &&
+    // 決着したとき、または自分が脱落したとき（投了・玉を取られた。順位はそこで決まる。CPUどうしの続きは見ていられる）
+    const done = (gover && winner >= 0) || (humanPlayer >= 0 && eliminated[humanPlayer]);
+    const show = done && humanPlayer >= 0 && !selfPlayMode && moveCount > 0 && gameGen !== skipGen &&
       !(typeof reviewMode !== 'undefined' && reviewMode);
     if (!box) {
       const wrap = document.getElementById('canvas-wrap'); if (!wrap) return;
