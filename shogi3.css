@@ -179,3 +179,5 @@ button.on{ background: var(--on) !important; border-color: var(--on-line) !impor
 /* 青将・赤将・緑将で対局：いつも1行にまとめる（スマホでは3つが幅に収まるように詰める） */
 .seatRow{flex-basis:100%;display:flex;gap:6px;justify-content:center}
 @media (max-width:480px){.seatRow button{flex:1 1 0;min-width:0;padding:10px 4px;font-size:12.5px;letter-spacing:0;white-space:nowrap}}
+/* 開発用の表示（CPUの読んだ深さ・読み筋ランキング）。ふだんは隠し、?debug のときだけ出す（ui.js が body に debug をつける） */
+body:not(.debug) #perf-info,body:not(.debug) #think-panel,body:not(.debug) #prev-think-btn,body:not(.debug) #prev-think-panel{display:none!important}

@@ -734,6 +734,8 @@ function applyAISetting(){
   if(ctx && board) render();       // 盤の名前の横の「CPU 中級 2秒」などを描き直す（起動直後は盤がまだない）
 }
 window.addEventListener('DOMContentLoaded', () => {
+  // 開発用の表示（CPUの読んだ深さ・読み筋ランキング）は、?debug をつけたときだけ出す（shogi3.css）
+  if(new URLSearchParams(location.search).has('debug')) document.body.classList.add('debug');
   canvas = document.getElementById('c');
   ctx = canvas.getContext('2d');
   canvas.width = CW; canvas.height = CH;
