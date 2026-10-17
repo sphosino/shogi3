@@ -174,3 +174,5 @@ button.on{ background: var(--on) !important; border-color: var(--on-line) !impor
 /* 「みんなと指す」（room.html）への入口 */
 .online-link{display:flex;align-items:baseline;justify-content:center;gap:10px;flex-wrap:wrap;width:100%;margin-bottom:8px;padding:10px 14px;border-radius:14px;background:var(--accent);color:#fff;font-weight:900;font-size:16px;text-decoration:none;box-shadow:0 3px 0 #8d4410}
 .online-link small{font-weight:500;font-size:12px;opacity:.9}
+/* 難易度の行：文字は1行目、CPU・学習AI・考える時間は2行目にそろえる */
+#diff-label{flex-basis:100%;text-align:center}

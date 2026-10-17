@@ -94,7 +94,7 @@ window.drawPlayerLabels = function () {
   if (!lastMove || !lastMove.fugo) return;
   const col = PCOL[lastMove.o];
   ctx.textAlign = 'center'; ctx.fillStyle = col; ctx.font = 'bold 15px serif';
-  ctx.fillText('▶ ' + (RV ? seatName(lastMove.o) : '') + ' ' + lastMove.fugo, CW / 2, CH - 10);
+  ctx.fillText('▶ ' + (RV ? seatName(lastMove.o) : '') + ' ' + lastMove.fugo, CW / 2, CH - 4);
 };
 window.renderKifu = () => {};
 

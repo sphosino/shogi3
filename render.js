@@ -180,7 +180,7 @@ function drawHandRow(o, side){
   if(side==='bottom'){
     ctx.fillText('持ち駒',CW/2,BY+9*CS+14);
     uh.forEach(({p,n},i)=>{
-      const cx=startX+i*sp+sp/2, cy=BY+9*CS+50;
+      const cx=startX+i*sp+sp/2, cy=BY+9*CS+44; // 下の「直前の手」の文字とくっつかないように
       const isSel=selHand&&o===humanPlayer&&selected===i;
       if(isSel){ctx.fillStyle='rgba(255,255,80,0.25)';ctx.fillRect(cx-25,cy-26,50,50);}
       drawPieceAt(cx,cy,{p,o,pr:false},true);
@@ -263,7 +263,7 @@ function drawPlayerLabels(){
     ctx.fillStyle=col;
     ctx.font='bold 15px serif';
     ctx.shadowColor=col; ctx.shadowBlur=6;
-    ctx.fillText('▶ '+pName(lastMove.o)+' '+lastMove.fugo, CW/2, CH-10);
+    ctx.fillText('▶ '+pName(lastMove.o)+' '+lastMove.fugo, CW/2, CH-4);
     ctx.shadowBlur=0;
   }
   // 視点表示
