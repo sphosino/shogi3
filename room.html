@@ -30,7 +30,7 @@ window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="shogi3.css?v=20261017c">
+<link rel="stylesheet" href="shogi3.css?v=20261017d">
 <style>
 /* 部屋の画面。色は shogi3.css の :root（また遊ぼのクリーム色）を使う */
 body{flex-direction:column;align-items:center}
@@ -63,6 +63,7 @@ label.check{flex-direction:row;align-items:center;font-weight:500}
 .seatsm{font-size:.78rem;display:flex;gap:4px;flex-wrap:wrap}
 /* 対局中 */
 #game{display:flex;flex-direction:column;gap:8px}
+#game #canvas-wrap{--board-off:210px} /* 盤の上下の名前の欄まで画面に収める */
 .players{display:flex;gap:6px}
 .pl{position:relative;flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:6px 8px;font-size:.85rem}
 .pl.turn{border-color:var(--c);box-shadow:0 0 0 2px var(--c)}

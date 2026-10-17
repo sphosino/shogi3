@@ -39,7 +39,8 @@ body {
   font-weight: bold;
 }
 
-#canvas-wrap { width: 100%; }
+/* 盤は、画面の幅と高さの小さいほうに合わせる（パソコンで上下が切れないように）。--board-off は盤の上にあるものの高さ */
+#canvas-wrap { width: 100%; max-width: min(100%, calc(100vh - var(--board-off, 128px))); max-width: min(100%, calc(100dvh - var(--board-off, 128px))); margin-inline: auto; }
 canvas { display: block; cursor: pointer; border-radius: 18px; width: 100%; height: auto; box-shadow:0 4px 0 var(--line); }
 
 #btnRow { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
