@@ -341,9 +341,10 @@ function renderResult() {
     : `<button class="btn primary" type="button" id="again">${n > 1 ? `この${n}人でもう一局` : 'もう一局'}${k ? `（${k}/${n}）` : ''}</button>`;
   el.innerHTML = `<div class="big" style="color:${PCOL[st.winner]}">${esc(seatName(st.winner))} の勝ち！</div>
     <p class="note" style="text-align:center">${resigned ? '投了と玉取りで決着' : WIN_TYPE[st.winType] || ''}・${st.moves}手</p>
-    <div class="rank">${rows}</div><div class="btnrow">${againBtn}<button class="btn" type="button" id="review">この対局を検討する</button></div>`;
+    <div class="rank">${rows}</div><div class="btnrow">${againBtn}<button class="btn" type="button" id="review">この対局を検討する</button>${you >= 0 ? '<button class="btn" type="button" id="shareX">結果をXでシェア</button>' : ''}</div>`;
   on('again', () => send({ t: 'again' }));
   on('review', openReview);
+  on('shareX', () => Share.postRoom(st, (RV.ranking || []).indexOf(you) + 1, you));
   if (!resultShown) { resultShown = true; gtag('event', 'shogi_room_over', { win: st.winType, moves: st.moves }); }
 }
 // 棋譜を「ひとりで指す」画面にわたして、検討画面で開く（shogi3.html#review）
