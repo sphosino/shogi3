@@ -48,13 +48,13 @@ const Share = (() => {
       !(typeof reviewMode !== 'undefined' && reviewMode);
     if (!box) {
       const wrap = document.getElementById('canvas-wrap'); if (!wrap) return;
-      box = document.createElement('div'); box.id = 'shareBox'; box.hidden = true;
-      box.style.cssText = 'margin-top:10px;display:flex;justify-content:center';
+      box = document.createElement('div'); box.id = 'shareBox';
+      box.style.cssText = 'margin-top:10px;display:none;justify-content:center';
       box.innerHTML = '<button type="button" class="on" id="share-btn">🎉 結果をXでシェア</button>';
       wrap.after(box);
       document.getElementById('share-btn').onclick = () => post(soloText() + ' #三人将棋', 'https://mataasobo.com/shogi3/', 'solo');
     }
-    box.hidden = !show;
+    box.style.display = show ? 'flex' : 'none'; // hidden 属性は display の指定に負けるので、display で切りかえる
   }
   function hookSolo() {
     if (typeof render !== 'function') return;
