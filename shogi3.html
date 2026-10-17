@@ -91,9 +91,11 @@ window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
       <button id="load-kifu-btn" onclick="openLoadKifu()" title="「📋 棋譜をコピー」で出てきた棋譜を貼り付けて読み込み、検討します">📥 棋譜を読み込む</button>
       <button id="games-btn" onclick="location.href='web/games.html'" title="AIが自己対局・評価対局で指した棋譜の一覧">📚 AIの棋譜集</button>
       <button id="copy-kifu-btn" onclick="copyGameRecord()" title="対局の最初の局面と全部の手（学習AIの勝率予想つき）をクリップボードにコピーします">📋 棋譜をコピー</button>
-      <button id="hb0" class="on" onclick="setHumanPlayerFromEdit(0)">🔵 青将で対局</button>
-      <button id="hb1" onclick="setHumanPlayerFromEdit(1)">🔴 赤将で対局</button>
-      <button id="hb2" onclick="setHumanPlayerFromEdit(2)">🟢 緑将で対局</button>
+      <div class="seatRow" role="group" aria-label="どの席で指すか">
+        <button id="hb0" class="on" onclick="setHumanPlayerFromEdit(0)">🔵 青将で対局</button>
+        <button id="hb1" onclick="setHumanPlayerFromEdit(1)">🔴 赤将で対局</button>
+        <button id="hb2" onclick="setHumanPlayerFromEdit(2)">🟢 緑将で対局</button>
+      </div>
       <button id="view-btn" onclick="setView(viewPlayer===2?0:viewPlayer+1)">👁 視点切替</button>
       <button id="edit-btn" onclick="toggleEditMode()" style="background:#1a1a3a;border:1px solid #8888ff;color:#aaaaff">✏️ 盤面編集</button>
       <button id="sp-btn" onclick="toggleSelfPlay()" style="background:#1a3a1a;border:1px solid #33bb55;color:#33bb55">🤖 自己対局</button>

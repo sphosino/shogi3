@@ -176,3 +176,6 @@ button.on{ background: var(--on) !important; border-color: var(--on-line) !impor
 .online-link small{font-weight:500;font-size:12px;opacity:.9}
 /* 難易度の行：文字は1行目、CPU・学習AI・考える時間は2行目にそろえる */
 #diff-label{flex-basis:100%;text-align:center}
+/* 青将・赤将・緑将で対局：いつも1行にまとめる（スマホでは3つが幅に収まるように詰める） */
+.seatRow{flex-basis:100%;display:flex;gap:6px;justify-content:center}
+@media (max-width:480px){.seatRow button{flex:1 1 0;min-width:0;padding:10px 4px;font-size:12.5px;letter-spacing:0;white-space:nowrap}}
