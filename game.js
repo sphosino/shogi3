@@ -89,9 +89,12 @@ async function askNet(req){
   return r.json();
 }
 
+// 学習AIは同時に2つ考えられない（重なると WebAssembly が壊れる）。前の考えが終わるのを待ってから次を考える
+let netChain=Promise.resolve();
+function askNetInOrder(req){ const r=netChain.then(()=>askNet(req)); netChain=r.catch(()=>{}); return r; }
 function netMove(_g){
   const req={board, hand, eliminated, turn, moveCount, rule:keepAllPieces, timeMs:netTimeMs};
-  askNet(req)
+  askNetInOrder(req)
     .then(res=>{
       if(_g!==gameGen||gover) return;
       if(res.error) throw new Error(res.error);

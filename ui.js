@@ -44,14 +44,14 @@ function setHumanPlayer(p){
   if(editMode){
     gover=false; moveCount=0; kifu=[]; renderKifu(); turn=0; winType='normal'; lastMove=null; humanEliminated=eliminated[p]; gameGen++; render(); if(p!==0) setTimeout(()=>kickAI(), AI_DELAY_MS);
   } else if(!gover && moveCount > 0){
-    // 停止後など局面が存在する場合はinitせず現局面から継続（editModeブランチと同じパターン）
+    // 対局の途中で席を変えた：局面も手番もそのまま、自分の席だけ入れかえて続ける
+    //   （前は手番を青に戻していて、赤や緑の番のときに局面と手番が食いちがっていた）
     humanEliminated=eliminated[p];
-    gover=false; kifu=[]; renderKifu();
-    turn=0; winType='normal'; lastMove=null;
-    gameGen++;
+    gameGen++;                 // 考え中だった CPU の手は捨てる
     selected=null; vmoves=[]; selHand=false; promoQ=null;
     render();
-    if(p!==0) setTimeout(()=>kickAI(), AI_DELAY_MS);
+    if(turn!==p) setTimeout(()=>kickAI(), AI_DELAY_MS);
+    else setStatus(PNAME[p]+'の番です');
   } else {
     init();
   }
