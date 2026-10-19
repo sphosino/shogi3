@@ -744,6 +744,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
   applyAISetting();
+  if(aiKind==='net') initNet();   // 学習AIの重み（約22MB）を、対局が始まる前から裏で読みこんでおく
   setCpuCollusion(false);
   setKeepAllPieces('all');
   setHumanPlayer(0);

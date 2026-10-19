@@ -71,18 +71,24 @@ function kickAI(){
 
 // 学習したネットに指し手を聞く。まずブラウザ内（web/ai.js：WebGPU、なければCPU）で動かし、
 // 使えなければ play_server.py に問い合わせる。どちらも使えなければ従来のAIで指す
+// 学習AIの準備は1回だけ（2回同時に始めると WebAssembly が壊れる）。ページを開いたらすぐ裏で始める（ui.js）
+let netInitP=null;
+function initNet(){
+  if(netInitP) return netInitP;
+  if(!(window.LocalAI && window.ort)) return (netInitP=Promise.resolve(false));
+  netInitP=LocalAI.init().then(p=>{
+    console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、重み '+LocalAI.model+'）');return true;
+  }).catch(e=>{
+    LocalAI.failed=true;console.warn('ブラウザ内の学習AIを使えません:', e);
+    // 公開しているサイトでは問い合わせ先のサーバーがないので、手作りの CPU に切りかえて知らせる
+    if(!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){ setAIKind('cpu'); setStatus('この機械では学習AIを動かせないので、CPU（中級）で指します'); }
+    return false;
+  });
+  return netInitP;
+}
 async function askNet(req){
   if(window.LocalAI && window.ort){
-    if(!LocalAI.ready && !LocalAI.failed){
-      try{
-        setStatus('学習AIを準備中…（初回だけ数秒かかります）');
-        const p=await LocalAI.init();
-        console.log('学習AI: ブラウザ内で動かします（'+(p==='webgpu'?'GPU':'CPU')+'、重み '+LocalAI.model+'）');
-      }catch(e){
-        LocalAI.failed=true;
-        console.warn('ブラウザ内の学習AIを使えないので、サーバーに問い合わせます:', e);
-      }
-    }
+    if(!LocalAI.ready && !LocalAI.failed){ setStatus('学習AIを準備中…（初回だけ数秒かかります）'); await initNet(); }
     if(LocalAI.ready) return LocalAI.think(req);
   }
   const r=await fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});

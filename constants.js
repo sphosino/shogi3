@@ -20,7 +20,7 @@ const DIFFICULTY_LEVELS = {
 };
 const AI_MAX_DEPTH = 12; // 反復深化の上限深さ（時間切れで実際はこれより浅く終わる）
 let currentDifficulty = 'normal';
-let aiKind = 'cpu';    // 'cpu'（従来のAI）か 'net'（学習AI）。画面の「CPU / 学習AI」ボタン
+let aiKind = 'net';    // 'cpu'（従来のAI）か 'net'（学習AI）。画面の「CPU / 学習AI」ボタン。最初は学習AI（2026-10-19、トップで「学習したAI」と書いているので）
 let thinkMs = 2000;    // AIが1手に考える時間（ミリ秒）。画面で選ぶ
 let netTimeMs = 2000;  // 学習AIの考える時間（thinkMs と同じ。ui.js の applyAISetting が設定）
 
