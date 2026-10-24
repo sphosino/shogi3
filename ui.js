@@ -11,7 +11,7 @@ function renderKifu(){
   el.innerHTML=displayKifu.map((k,i)=>{
     const cls=i===displayKifu.length-1?'latest':'';
     // クリックでその手の局面を検討（review.js）。自己対局中は無効
-    const click = selfPlayMode ? '' : ' onclick="reviewJump('+(i+1)+')" title="この手の局面を検討"';
+    const click = selfPlayMode ? '' : ' onclick="reviewJump('+(i+1)+')" title="'+L('この手の局面を検討','Review this position')+'"';
     return '<div class="'+cls+'"'+click+'>'+
       '<span style="color:#806040;font-size:10px;">'+(i+1)+'.</span> '+
       '<span style="color:'+k.col+'">'+k.name+'</span> '+
@@ -36,7 +36,7 @@ function fitCanvas(){
 function setHumanPlayer(p){
   humanPlayer=p; viewPlayer=p;
   [0,1,2].forEach(i=>PNAME[i]=PNAME_BASE[i]);
-  PNAME[p]=PNAME_BASE[p]+'(あなた)';
+  PNAME[p]=PNAME_BASE[p]+L('(あなた)',' (you)');
   [0,1,2].forEach(i=>{
     const btn=document.getElementById('hb'+i);
     if(btn) btn.classList.toggle('on',i===p);
@@ -51,7 +51,7 @@ function setHumanPlayer(p){
     selected=null; vmoves=[]; selHand=false; promoQ=null;
     render();
     if(turn!==p) setTimeout(()=>kickAI(), AI_DELAY_MS);
-    else setStatus(PNAME[p]+'の番です');
+    else setStatus(L(PNAME[p]+'の番です','Your turn'));
   } else {
     init();
   }
@@ -81,12 +81,12 @@ function toggleSelfPlay(){
     AI_SEARCH_DEPTH=cfg.depth;
     AI_NOISE=cfg.noise;
     setSelfPlayDiffBtns(false);
-    document.getElementById('sp-btn').textContent='🤖 自己対局';
-    document.getElementById('sp-stop-btn').textContent='✓ 停止済み';
+    document.getElementById('sp-btn').textContent=L('🤖 自己対局','🤖 Self-play');
+    document.getElementById('sp-stop-btn').textContent=L('✓ 停止済み','✓ Stopped');
     document.getElementById('sp-stop-btn').style.borderColor='#888';
     document.getElementById('sp-stop-btn').style.color='#888';
     document.getElementById('sp-stop-btn').disabled=true;
-    document.getElementById('sp-status').textContent='停止中（結果は上記）';
+    document.getElementById('sp-status').textContent=L('停止中（結果は上記）','Stopped (results above)');
     // 現在の局面・手番をそのまま維持（盤面リセットしない）
     humanPlayer=0;
     gameGen++; // キュー済みのkickAI/setTimeoutをすべて無効化
@@ -107,8 +107,8 @@ function toggleSelfPlay(){
     selfPlayTotalMoves=0;
     document.getElementById('sp-panel').style.display='block';
     setTimeout(()=>fitCanvas(), 0); // sp-panel表示後にcanvasスケール再計算
-    document.getElementById('sp-btn').textContent='⏹ 対局中...';
-    document.getElementById('sp-stop-btn').textContent='■ 停止';
+    document.getElementById('sp-btn').textContent=L('⏹ 対局中...','⏹ Playing...');
+    document.getElementById('sp-stop-btn').textContent=L('■ 停止','■ Stop');
     document.getElementById('sp-stop-btn').style.borderColor='#ff4433';
     document.getElementById('sp-stop-btn').style.color='#ff4433';
     document.getElementById('sp-stop-btn').disabled=false;
@@ -135,8 +135,8 @@ function resumeSelfPlay(){
   humanPlayer = -1;
   humanEliminated = false;
   gameGen++;
-  document.getElementById('sp-btn').textContent='⏹ 対局中...';
-  document.getElementById('sp-stop-btn').textContent='■ 停止';
+  document.getElementById('sp-btn').textContent=L('⏹ 対局中...','⏹ Playing...');
+  document.getElementById('sp-stop-btn').textContent=L('■ 停止','■ Stop');
   document.getElementById('sp-stop-btn').style.borderColor='#ff4433';
   document.getElementById('sp-stop-btn').style.color='#ff4433';
   document.getElementById('sp-stop-btn').disabled=false;
@@ -144,7 +144,7 @@ function resumeSelfPlay(){
   setSelfPlayDiffBtns(true);
   setTimeout(()=>fitCanvas(), 0); // レイアウト変化後にcanvasスケール再計算
   const pct=i=>{ const t=selfPlayGames; return t>0?Math.round(selfPlayWins[i]/t*100)+'%':'-%'; };
-  document.getElementById('sp-status').textContent=`対局中... 青${pct(0)} 赤${pct(1)} 緑${pct(2)}`;
+  document.getElementById('sp-status').textContent=L(`対局中... 青${pct(0)} 赤${pct(1)} 緑${pct(2)}`,`Playing... Blue ${pct(0)} Red ${pct(1)} Green ${pct(2)}`);
   // gover状態（1局終了後に停止）なら次局開始、そうでなければ現局面から再開
   if(gover){
     setTimeout(()=>startNextSelfPlay(), 0);
@@ -161,16 +161,16 @@ function updateSpStats(){
     document.getElementById('sp-p'+i).textContent=total>0?Math.round(selfPlayWins[i]/total*100)+'%':'0%';
   });
   document.getElementById('sp-wd').textContent=selfPlayDraws;
-  document.getElementById('sp-avg').textContent=total>0?Math.round(selfPlayTotalMoves/total)+'手':'-';
-  document.getElementById('sp-total').textContent=total+'局完了';
+  document.getElementById('sp-avg').textContent=total>0?Math.round(selfPlayTotalMoves/total)+L('手',''):'-';
+  document.getElementById('sp-total').textContent=total+L('局完了',' games done');
   const totalTryWins = selfPlayTryWins.reduce((s,v)=>s+v,0);
   const tryRate = total>0 ? Math.round(totalTryWins/total*100) : '-';
   const t3 = selfPlayTryWinsBy[2], t2 = selfPlayTryWinsBy[1], t1 = selfPlayTryWinsBy[0];
   const avgPieces = selfPlayTryPiecesCount > 0 ? Math.round(selfPlayTryPiecesTotal / selfPlayTryPiecesCount) : '-';
   document.getElementById('sp-tryrate').textContent=
-    `入玉率: ${tryRate}%（${totalTryWins}/${total}局） 3人:${t3} 2人:${t2} 平均駒数:${avgPieces}`;
+    L(`入玉率: ${tryRate}%（${totalTryWins}/${total}局） 3人:${t3} 2人:${t2} 平均駒数:${avgPieces}`,`King-entry rate: ${tryRate}% (${totalTryWins}/${total}) 3p:${t3} 2p:${t2} avg pieces:${avgPieces}`);
   const pct=i=>total>0?Math.round(selfPlayWins[i]/total*100)+'%':'-%';
-  document.getElementById('sp-status').textContent=`対局中... 青${pct(0)} 赤${pct(1)} 緑${pct(2)}`;
+  document.getElementById('sp-status').textContent=L(`対局中... 青${pct(0)} 赤${pct(1)} 緑${pct(2)}`,`Playing... Blue ${pct(0)} Red ${pct(1)} Green ${pct(2)}`);
 }
 function startNextSelfPlay(){
   if(!selfPlayMode) return;
@@ -240,7 +240,7 @@ function togglePrevThink(){
   if(!prevEl) return;
   const showing = prevEl.style.display !== 'none';
   prevEl.style.display = showing ? 'none' : 'block';
-  if(prevBtn) prevBtn.textContent = showing ? '📋 直前の読み筋を見る' : '📋 直前の読み筋を閉じる';
+  if(prevBtn) prevBtn.textContent = showing ? L('📋 直前の読み筋を見る','📋 Show the last line of thought') : L('📋 直前の読み筋を閉じる','📋 Hide the last line of thought');
 }
 
 function nextTurn(bd) {
@@ -249,7 +249,7 @@ function nextTurn(bd) {
   let next = nextAliveOn(eliminated, turn);
   if (next === -1) {
     gover = true;
-    setStatus('全員脱落？ 異常終了です');
+    setStatus(L('全員脱落？ 異常終了です','Everyone is out? The game ended abnormally'));
     return;
   }
 
@@ -258,14 +258,14 @@ function nextTurn(bd) {
 
   if (!selfPlayMode && turn === humanPlayer) {
     if (!allMoves(humanPlayer,bd).length) {
-      setStatus('手がありません（スキップ）');
+      setStatus(L('手がありません（スキップ）','No legal moves (skipped)'));
       const _sg = gameGen;
       setTimeout(() => {
         if (_sg !== gameGen || gover) return;
         nextTurn(bd);
       }, AI_SKIP_DELAY_MS);
     } else {
-      setStatus(PNAME[humanPlayer] + 'の番です');
+      setStatus(L(PNAME[humanPlayer] + 'の番です','Your turn'));
     }
   } else {
     kickAI();
@@ -276,7 +276,7 @@ function nextTurn(bd) {
 // 投了した人は脱落扱いにする。玉は盤から取り除き、残りの駒は盤に残る（玉を取られて脱落したときと同じく、動かず利きもない）
 function resignHuman(){
   if(gover || selfPlayMode || editMode || eliminated[humanPlayer]) return;
-  if(!confirm('投了しますか？（脱落扱いになり、残りの2人の対局を観戦します）')) return;
+  if(!confirm(L('投了しますか？（脱落扱いになり、残りの2人の対局を観戦します）','Resign? (You are eliminated and watch the other 2 play on)'))) return;
   const p = humanPlayer;
   for(let r=0;r<9;r++) for(let c=0;c<9;c++){
     const x = board[r][c];
@@ -285,17 +285,17 @@ function resignHuman(){
   eliminated[p] = true;
   humanEliminated = true;
   if(gameRecord) gameRecord.moves.push({o:p, resign:true});
-  kifu.push({fugo:'投了', col:PCOL[p], name:PNAME_BASE[p]});
+  kifu.push({fugo:L('投了','Resign'), col:PCOL[p], name:PNAME_BASE[p]});
   renderKifu();
   buildAttackMaps(board);
   const alive = [0,1,2].filter(i=>!eliminated[i]);
   if(alive.length <= 1){
     gover = true; winner = alive[0];
-    setStatus('投了しました。'+pName(winner)+'の勝ち');
+    setStatus(L('投了しました。'+pName(winner)+'の勝ち','You resigned. '+pName(winner)+' wins'));
     render();
     return;
   }
-  setStatus('投了しました。残りの2人の対局を続けます');
+  setStatus(L('投了しました。残りの2人の対局を続けます','You resigned. The other 2 play on'));
   render();
   // 自分の手番なら次へ。CPUが考え中なら、その手のあと自動で次へ進む（脱落者は飛ばされる）
   if(turn === p) nextTurn(board);
@@ -316,7 +316,7 @@ function copyGameRecord(){
     final: {board, hand, eliminated, turn, moveCount, rule:keepAllPieces, gover, winner},
   };
   const text = JSON.stringify(rec);
-  const done = ()=>setStatus('📋 棋譜をコピーしました（'+rec.moves.length+'手）');
+  const done = ()=>setStatus(L('📋 棋譜をコピーしました（'+rec.moves.length+'手）','📋 Record copied ('+rec.moves.length+' moves)'));
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(done, ()=>fallbackCopy(text, done));
   } else fallbackCopy(text, done);
@@ -325,7 +325,7 @@ function fallbackCopy(text, done){
   const ta=document.createElement('textarea');
   ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
   document.body.appendChild(ta); ta.select();
-  try{ document.execCommand('copy'); done(); }catch(e){ prompt('コピーしてください', text); }
+  try{ document.execCommand('copy'); done(); }catch(e){ prompt(L('コピーしてください','Copy this'), text); }
   ta.remove();
 }
 
@@ -449,7 +449,7 @@ function toggleEditMode(){
     // 現在の局面を編集用にコピー
     editElim = eliminated.slice();
     btn.classList.add('on');
-    btn.textContent = '✏️ 編集中...';
+    btn.textContent = L('✏️ 編集中...','✏️ Editing...');
     panel.style.display = 'block';
     // 脱落チェックボックス同期
     [0,1,2].forEach(o=>{
@@ -461,7 +461,7 @@ function toggleEditMode(){
     gover = false; // 編集中はゲームオーバー解除
   } else {
     btn.classList.remove('on');
-    btn.textContent = '✏️ 盤面編集';
+    btn.textContent = L('✏️ 盤面編集','✏️ Edit board');
     panel.style.display = 'none';
     editSelected = null;
   }
@@ -521,7 +521,7 @@ function renderEditPalette(){
       // 通常
       const btn = document.createElement('button');
       btn.textContent = PC[p];
-      btn.title = `${['青','赤','緑'][o]}・${PC[p]}`;
+      btn.title = `${L(['青','赤','緑'][o],PNAME_BASE[o])}・${PC[p]}`;
       btn.style.cssText = `background:${EDIT_COLORS[o]}22;border:1px solid ${EDIT_COLORS[o]}88;color:${EDIT_COLORS[o]};padding:3px 6px;border-radius:3px;cursor:pointer;font-size:13px;min-width:28px;`;
       btn.onclick = ()=>{ editSelected={type:'palette',p,o,pr:false}; renderEditPalette(); renderEditHand(); };
       if(editSelected?.type==='palette'&&editSelected.p===p&&editSelected.o===o&&!editSelected.pr)
@@ -531,7 +531,7 @@ function renderEditPalette(){
       if(p!=='OU'&&p!=='KIN'&&PCP[p]){
         const btn2 = document.createElement('button');
         btn2.textContent = PCP[p];
-        btn2.title = `${['青','赤','緑'][o]}・${PCP[p]}（成）`;
+        btn2.title = `${L(['青','赤','緑'][o],PNAME_BASE[o])}・${PCP[p]}${L('（成）',' (promoted)')}`;
         btn2.style.cssText = `background:${EDIT_COLORS[o]}33;border:1px dashed ${EDIT_COLORS[o]}88;color:${EDIT_COLORS[o]};padding:3px 6px;border-radius:3px;cursor:pointer;font-size:13px;min-width:28px;`;
         btn2.onclick = ()=>{ editSelected={type:'palette',p,o,pr:true}; renderEditPalette(); renderEditHand(); };
         if(editSelected?.type==='palette'&&editSelected.p===p&&editSelected.o===o&&editSelected.pr)
@@ -552,7 +552,7 @@ function renderEditHand(){
     const div = document.createElement('div');
     div.style.cssText = `border:1px solid ${EDIT_COLORS[o]}55;border-radius:4px;padding:4px 6px;min-width:100px;`;
     const title = document.createElement('div');
-    title.textContent = ['🔵青','🔴赤','🟢緑'][o];
+    title.textContent = EN?['🔵Blue','🔴Red','🟢Green'][o]:['🔵青','🔴赤','🟢緑'][o];
     title.style.cssText = `color:${EDIT_COLORS[o]};font-size:11px;margin-bottom:3px;text-align:center;`;
     div.appendChild(title);
     // 駒種ごとに+/-
@@ -624,7 +624,7 @@ function setHumanPlayerFromEdit(p){
     // init()をスキップして現在の盤面からスタート
     humanPlayer=p; viewPlayer=p;
     [0,1,2].forEach(i=>PNAME[i]=PNAME_BASE[i]);
-    PNAME[p]=PNAME_BASE[p]+'(あなた)';
+    PNAME[p]=PNAME_BASE[p]+L('(あなた)',' (you)');
     [0,1,2].forEach(i=>{
       const btn=document.getElementById('hb'+i);
       if(btn) btn.classList.toggle('on',i===p);
@@ -654,21 +654,21 @@ function setCpuCollusion(val){
   }
   if(desc){
     desc.innerHTML = val
-      ? '🤝 <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>が連携してプレイヤーを集中攻撃します'
-      : '⚔ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>もそれぞれ自分の勝利を目指す完全三つ巴戦です';
+      ? L('🤝 <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>が連携してプレイヤーを集中攻撃します','🤝 <span style="color:#ff4433">CPU 1</span> and <span style="color:#33bb55">CPU 2</span> work together to gang up on you')
+      : L('⚔ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>もそれぞれ自分の勝利を目指す完全三つ巴戦です','⚔ <span style="color:#ff4433">CPU 1</span> and <span style="color:#33bb55">CPU 2</span> each play for their own win: a true free-for-all');
   }
   // ルール説明の警告文も更新
   const warn = document.getElementById('collusion-warning');
   if(warn){
     warn.innerHTML = val
-      ? '⚠️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は共闘してあなたを狙ってきます。'
-      : '⚔️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は<span style="color:#c2601a">それぞれ自分の勝利</span>を目指します。';
+      ? L('⚠️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は共闘してあなたを狙ってきます。','⚠️ <span style="color:#ff4433">CPU 1</span> and <span style="color:#33bb55">CPU 2</span> team up to come after you.')
+      : L('⚔️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は<span style="color:#c2601a">それぞれ自分の勝利</span>を目指します。','⚔️ <span style="color:#ff4433">CPU 1</span> and <span style="color:#33bb55">CPU 2</span> each play for <span style="color:#c2601a">their own win</span>.');
   }
   // 学習AIは共闘しない（共闘は手作りCPUだけの設定）。学習AIのときはボタンを押せなくして、そう書く
   const net = typeof aiKind !== 'undefined' && aiKind === 'net';
   [onBtn, offBtn].forEach(b=>{ if(b && !selfPlayMode){ b.disabled = net; b.style.opacity = net ? '0.35' : '1'; } });
   if(net){
-    const t = '🧠 学習AIは共闘しません。いつも<span style="color:#c2601a">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）';
+    const t = L('🧠 学習AIは共闘しません。いつも<span style="color:#c2601a">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）','🧠 The neural AI never teams up. Each one always plays only for <span style="color:#c2601a">its own win</span> (teaming up is a setting for the hand-made CPU)');
     if(desc) desc.innerHTML = t;
     if(warn) warn.innerHTML = t;
   }
@@ -689,11 +689,11 @@ function setKeepAllPieces(val){
 
   if(desc){
     if(val === 'all' || val === true)
-      desc.innerHTML = '取った駒は<span class="highlight">常に持ち駒</span>になります。';
+      desc.innerHTML = L('取った駒は<span class="highlight">常に持ち駒</span>になります。','Captured pieces <span class="highlight">always go to your hand</span>.');
     else if(val === 'next')
-      desc.innerHTML = '取った駒は<span class="highlight">第三者の持ち駒</span>になります🎁（2人になったら取った側が受け取り）';
+      desc.innerHTML = L('取った駒は<span class="highlight">第三者の持ち駒</span>になります🎁（2人になったら取った側が受け取り）','Captured pieces go to <span class="highlight">the third player\'s hand</span>🎁 (once only 2 remain, the capturer keeps them)');
     else
-      desc.innerHTML = '通常、取った駒は<span class="highlight">消滅</span>します。以下の場合のみ持ち駒になります。<ul style="margin:6px 0 0 16px;color:#9a7462;font-size:12px;line-height:1.8;"><li><span class="highlight">脱落したプレイヤーがいる</span>とき</li><li><span class="highlight">成り駒</span>を取ったとき</li><li>相手より駒が<span class="highlight">3個以上少ない</span>とき</li><li><span class="highlight">玉が5段目以上</span>に進んでいる相手から取ったとき</li></ul>';
+      desc.innerHTML = L('通常、取った駒は<span class="highlight">消滅</span>します。以下の場合のみ持ち駒になります。<ul style="margin:6px 0 0 16px;color:#9a7462;font-size:12px;line-height:1.8;"><li><span class="highlight">脱落したプレイヤーがいる</span>とき</li><li><span class="highlight">成り駒</span>を取ったとき</li><li>相手より駒が<span class="highlight">3個以上少ない</span>とき</li><li><span class="highlight">玉が5段目以上</span>に進んでいる相手から取ったとき</li></ul>','Normally, captured pieces <span class="highlight">vanish</span>. They go to your hand only when:<ul style="margin:6px 0 0 16px;color:#9a7462;font-size:12px;line-height:1.8;"><li>a player <span class="highlight">has been eliminated</span></li><li>you capture a <span class="highlight">promoted piece</span></li><li>you have <span class="highlight">3 or more fewer pieces</span> than the opponent</li><li>the opponent\'s <span class="highlight">king has advanced to the 5th rank or beyond</span></li></ul>');
   }
 }
 
@@ -714,7 +714,7 @@ function setDifficulty(level){
   });
   // 難易度ラベル更新
   const lbl = document.getElementById('diff-label');
-  if(lbl) lbl.textContent = cfg.net ? '🧠 難易度: 学習AI（'+thinkMs/1000+'秒）' : cfg.emoji+' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）';
+  if(lbl) lbl.textContent = cfg.net ? L('🧠 難易度: 学習AI（'+thinkMs/1000+'秒）','🧠 Level: Neural AI ('+thinkMs/1000+'s)') : cfg.emoji+L(' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）',' Level: CPU '+cfg.label+' ('+thinkMs/1000+'s)');
 }
 
 // ── AIの種類（CPU / 学習AI）と考える時間 ──

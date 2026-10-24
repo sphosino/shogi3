@@ -178,7 +178,7 @@ function drawHandRow(o, side){
 
   ctx.font='bold 13px serif'; ctx.fillStyle=col+'cc'; ctx.textAlign='center';
   if(side==='bottom'){
-    ctx.fillText('持ち駒',CW/2,BY+9*CS+14);
+    ctx.fillText(L('持ち駒','Hand'),CW/2,BY+9*CS+14);
     uh.forEach(({p,n},i)=>{
       const cx=startX+i*sp+sp/2, cy=BY+9*CS+44; // 下の「直前の手」の文字とくっつかないように
       const isSel=selHand&&o===humanPlayer&&selected===i;
@@ -189,21 +189,21 @@ function drawHandRow(o, side){
       if(n>1){ctx.fillStyle=col;ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.fillText('×'+n,cx+18,cy+18);}
     });
   } else if(side==='top'){
-    ctx.fillText('持ち駒',CW/2,15);
+    ctx.fillText(L('持ち駒','Hand'),CW/2,15);
     uh.forEach(({p,n},i)=>{
       const cx=startX+i*sp+sp/2, cy=48;
       drawPieceAt(cx,cy,{p,o,pr:false},true);
       if(n>1){ctx.fillStyle=col;ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.fillText('×'+n,cx+18,cy+18);}
     });
   } else if(side==='right'){
-    ctx.textAlign='right'; ctx.fillText('持',CW-8,BY+CS*1.5);
+    ctx.textAlign='right'; ctx.fillText(L('持','Hand'),CW-8,BY+CS*1.5);
     uh.forEach(({p,n},i)=>{
       const cx=CW-52, cy=BY+CS*2+i*50+25;
       drawPieceAt(cx,cy,{p,o,pr:false},true);
       if(n>1){ctx.fillStyle=col;ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.fillText('×'+n,cx+15,cy+18);}
     });
   } else { // left
-    ctx.textAlign='left'; ctx.fillText('持',12,BY+CS*1.5);
+    ctx.textAlign='left'; ctx.fillText(L('持','Hand'),12,BY+CS*1.5);
     uh.forEach(({p,n},i)=>{
       const cx=50, cy=BY+CS*2+i*50+25;
       drawPieceAt(cx,cy,{p,o,pr:false},true);
@@ -248,16 +248,16 @@ function drawPlayerLabels(){
   const who=(o)=>{
     if(o===humanPlayer&&!selfPlayMode) return '';
     const d=DIFFICULTY_LEVELS[currentDifficulty]; if(!d) return '';
-    const sec=(d.net?netTimeMs:thinkMs)/1000+'秒';
+    const sec=(d.net?netTimeMs:thinkMs)/1000+L('秒','s');
     if(d.net){
-      const m=window.LocalAI&&LocalAI.model?LocalAI.model.replace(/^pbig2-gen/,'世代'):'';
-      return `　学習AI${m?' '+m:''} ${sec}`;
+      const m=window.LocalAI&&LocalAI.model?LocalAI.model.replace(/^pbig2-gen/,L('世代','gen ')):'';
+      return `　${L('学習AI','Neural AI')}${m?' '+m:''} ${sec}`;
     }
     return `　CPU ${d.label} ${sec}`;
   };
-  drawLabel(PNAME[0]+(eliminated[0]?' ☠':''),`駒数: ${counts[0]}${who(0)}`,12,CH-30,PCOL[0],'left');
-  drawLabel(PNAME[1]+(eliminated[1]?' ☠':''),`駒数: ${counts[1]}${who(1)}`,12,22,PCOL[1],'left');
-  drawLabel(PNAME[2]+(eliminated[2]?' ☠':''),`駒数: ${counts[2]}${who(2)}`,CW-12,CH-30,PCOL[2],'right');
+  drawLabel(PNAME[0]+(eliminated[0]?' ☠':''),`${L('駒数','Pieces')}: ${counts[0]}${who(0)}`,12,CH-30,PCOL[0],'left');
+  drawLabel(PNAME[1]+(eliminated[1]?' ☠':''),`${L('駒数','Pieces')}: ${counts[1]}${who(1)}`,12,22,PCOL[1],'left');
+  drawLabel(PNAME[2]+(eliminated[2]?' ☠':''),`${L('駒数','Pieces')}: ${counts[2]}${who(2)}`,CW-12,CH-30,PCOL[2],'right');
   // 直前の手を符号で表示
   if(lastMove&&lastMove.fugo){
     const col=PCOL[lastMove.o];
@@ -269,7 +269,7 @@ function drawPlayerLabels(){
     ctx.shadowBlur=0;
   }
   // 視点表示
-  const viewNames=['P0視点','P1視点','P2視点'];
+  const viewNames=EN?['View P0','View P1','View P2']:['P0視点','P1視点','P2視点'];
   ctx.textAlign='right'; ctx.fillStyle='#806040aa'; ctx.font='11px monospace';
   ctx.fillText('👁 '+viewNames[viewPlayer], CW-12, 22);
 }
@@ -286,19 +286,19 @@ function drawPromoDialog(){
   // タイトル
   ctx.fillStyle='#2a1000';ctx.font='bold 18px serif';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('成りますか？',dx+dw/2,dy+30);
+  ctx.fillText(L('成りますか？','Promote?'),dx+dw/2,dy+30);
 
   // 成るボタン（左）
   ctx.beginPath();ctx.roundRect(dx+18,dy+55,95,38,5);
   ctx.fillStyle='#7a3000';ctx.fill();
   ctx.fillStyle='#f5e8c8';ctx.font='bold 16px serif';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('成る',dx+65,dy+74);
+  ctx.fillText(L('成る','Promote'),dx+65,dy+74);
 
   // 成らないボタン（右）
   ctx.beginPath();ctx.roundRect(dx+148,dy+55,95,38,5);
   ctx.fillStyle='#2a4070';ctx.fill();
   ctx.fillStyle='#f5e8c8';ctx.font='bold 15px serif';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('成らない',dx+195,dy+74);
+  ctx.fillText(L('成らない','No'),dx+195,dy+74);
 }

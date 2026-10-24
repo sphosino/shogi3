@@ -35,7 +35,7 @@ function init(){
 
   viewPlayer = selfPlayMode ? 0 : humanPlayer;
   buildAttackMaps(board); // 初期盤面で双方向利き筋マップ構築
-  if(!selfPlayMode) setStatus(pName(humanPlayer)+'の番です');
+  if(!selfPlayMode) setStatus(L(pName(humanPlayer)+'の番です',EN&&humanPlayer>=0?'Your turn':pName(humanPlayer)+"'s turn"));
   render();
   // 人間がP0以外のとき、最初のAIターンをキック
   if(selfPlayMode || humanPlayer!==0) setTimeout(()=>kickAI(), selfPlayMode?0:AI_DELAY_MS);
@@ -46,7 +46,7 @@ function kickAI(){
   // 通常モード: humanPlayerのターンはスキップ
   if(!selfPlayMode && turn===humanPlayer) return;
   const showBoard = !selfPlayMode || true;
-  setStatus(pName(turn)+'が考え中...');
+  setStatus(L(pName(turn)+'が考え中...',pName(turn)+' is thinking...'));
   if(showBoard) render();
   const _g=gameGen;
   // 自己対局モードはdelayなしで即実行（ただし描画反映のため最小delay）
@@ -81,14 +81,14 @@ function initNet(){
   }).catch(e=>{
     LocalAI.failed=true;console.warn('ブラウザ内の学習AIを使えません:', e);
     // 公開しているサイトでは問い合わせ先のサーバーがないので、手作りの CPU に切りかえて知らせる
-    if(!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){ setAIKind('cpu'); setStatus('この機械では学習AIを動かせないので、CPU（中級）で指します'); }
+    if(!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){ setAIKind('cpu'); setStatus(L('この機械では学習AIを動かせないので、CPU（中級）で指します',"This device can't run the neural AI, so you'll play the CPU (Normal)")); }
     return false;
   });
   return netInitP;
 }
 async function askNet(req){
   if(window.LocalAI && window.ort){
-    if(!LocalAI.ready && !LocalAI.failed){ setStatus('学習AIを準備中…（初回だけ数秒かかります）'); await initNet(); }
+    if(!LocalAI.ready && !LocalAI.failed){ setStatus(L('学習AIを準備中…（初回だけ数秒かかります）','Getting the neural AI ready… (takes a few seconds the first time)')); await initNet(); }
     if(LocalAI.ready) return LocalAI.think(req);
   }
   const r=await fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
@@ -112,7 +112,7 @@ function netMove(_g){
     .catch(e=>{
       console.error('学習AIを使えません（ブラウザ内でもサーバーでも動かせませんでした）:',e);
       if(_g!==gameGen||gover) return;
-      setStatus('学習AIに接続できないため、中級のAIで指します');
+      setStatus(L('学習AIに接続できないため、中級のAIで指します',"Can't reach the neural AI, so the Normal AI will play"));
       const mv=aiMove(turn,board,hand,eliminated);
       if(mv) applyMove(mv,turn);
       render();
@@ -121,7 +121,7 @@ function netMove(_g){
 }
 
 function setStatus(msg){document.getElementById('info').textContent=msg;}
-function pName(o){ return o===humanPlayer?'あなた':PNAME_BASE[o]; }
+function pName(o){ return o===humanPlayer?L('あなた','You'):PNAME_BASE[o]; }
 
 // 将棋符号変換
 const SUJI = ['９','８','７','６','５','４','３','２','１']; // col 0→９, col 8→１
@@ -316,7 +316,7 @@ function applyMove(mv,o){
     const alive = [0,1,2].filter(i=>!eliminated[i]);
     const best = alive.reduce((a,b)=>scores[a]>=scores[b]?a:b);
     winType='limit'; gover=true; winner=best;
-    const msg = `⏱ ${MAX_MOVES}手制限！駒価値: 青${scores[0]} 赤${scores[1]} 緑${scores[2]} → ${['青将','赤将','緑将'][best]}の勝ち！`;
+    const msg = L(`⏱ ${MAX_MOVES}手制限！駒価値: 青${scores[0]} 赤${scores[1]} 緑${scores[2]} → ${['青将','赤将','緑将'][best]}の勝ち！`,`⏱ ${MAX_MOVES}-move limit! Piece values: Blue ${scores[0]}, Red ${scores[1]}, Green ${scores[2]} → ${PNAME_BASE[best]} wins!`);
     setStatus(msg);
     render();
     return;
@@ -350,9 +350,9 @@ function applyMove(mv,o){
       renderKifu();
       if(alive<=1){
         gover=true; winner=o;
-        setStatus('🎉 '+pName(o)+'の勝ち！');
+        setStatus('🎉 '+L(pName(o)+'の勝ち！',o===humanPlayer?'You win!':pName(o)+' wins!'));
       } else {
-        setStatus(pName(cap.o)+'が脱落！残り'+alive+'人'+(cap.o===humanPlayer?' CPU同士の対局へ':''));
+        setStatus(L(pName(cap.o)+'が脱落！残り'+alive+'人'+(cap.o===humanPlayer?' CPU同士の対局へ':''),(cap.o===humanPlayer?'You are':pName(cap.o)+' is')+' out! '+alive+' left'+(cap.o===humanPlayer?'. The CPUs play on':'')));
       }
       render();
       return;
@@ -388,7 +388,7 @@ function applyMove(mv,o){
         // 利きあり→入玉不可、通常の手として続行
       } else {
         winType='trywin'; gover=true; winner=o;
-        setStatus('🏯 入玉！'+pName(o)+'の勝ち！');
+        setStatus(L('🏯 入玉！'+pName(o)+'の勝ち！','🏯 King entry! '+(o===humanPlayer?'You win!':pName(o)+' wins!')));
         render();
         return;
       }

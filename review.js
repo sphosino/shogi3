@@ -74,7 +74,7 @@ function enterReview() {
   review.analysis = {};
   reviewMode = true;
   rvEl('review-panel').style.display = '';
-  rvEl('review-btn').textContent = '✕ 検討をやめる';
+  rvEl('review-btn').textContent = L('✕ 検討をやめる','✕ Stop reviewing');
   showReviewPos(review.line.length - 1);
   return true;
 }
@@ -87,7 +87,7 @@ function exitReview(kick = true) {
   const L = review.live;
   ({ board, hand, eliminated, turn, moveCount, gover, winner, winType, humanEliminated, lastMove } = L);
   rvEl('review-panel').style.display = 'none';
-  rvEl('review-btn').textContent = '🔍 検討';
+  rvEl('review-btn').textContent = L('🔍 検討','🔍 Review');
   setStatus(L.info);
   render(); renderKifu();
   if (kick && !gover && turn !== humanPlayer && !eliminated[turn]) setTimeout(() => kickAI(), AI_DELAY_MS);
@@ -99,11 +99,11 @@ function toggleReview() { reviewMode ? exitReview() : enterReview(); }
 function rvResumeHere() {
   if (!reviewMode) return;
   const k = review.idx;
-  if (review.line[k].gover) { setStatus('終局した局面からは指せません'); return; }
+  if (review.line[k].gover) { setStatus(L('終局した局面からは指せません',"You can't play from a finished position")); return; }
   const rec = { start: review.start, human: humanPlayer,
     moves: review.lineMoves.slice(0, k).map((m) => (m.mv ? { o: m.o, mv: m.mv, v: m.v } : { o: m.o, resign: true })) };
   loadGameRecordText(JSON.stringify(rec), false);
-  setStatus(`▶ ${k}手目の局面から対局を再開しました　${PNAME_BASE[turn]}の番`);
+  setStatus(L(`▶ ${k}手目の局面から対局を再開しました　${PNAME_BASE[turn]}の番`,`▶ Resumed from move ${k}. ${PNAME_BASE[turn]}'s turn`));
   if (!gover && turn !== humanPlayer && !eliminated[turn]) setTimeout(() => kickAI(), AI_DELAY_MS);
 }
 
@@ -158,7 +158,7 @@ function reviewClick(mx, my) {
   if (selected && bc) {
     const ms = vmoves.filter((m) => m.tr === bc[0] && m.tc === bc[1]);
     if (ms.length) {
-      const mv = ms.length === 2 ? (confirm('成りますか？') ? ms.find((m) => m.pro) : ms.find((m) => !m.pro)) : ms[0];
+      const mv = ms.length === 2 ? (confirm(L('成りますか？','Promote?')) ? ms.find((m) => m.pro) : ms.find((m) => !m.pro)) : ms[0];
       selected = null; vmoves = [];
       rvPlayMove(mv); return;
     }
@@ -185,9 +185,9 @@ function rvRenderHand() {
   const cnt = {};
   p.hand[p.turn].forEach((x) => (cnt[x] = (cnt[x] || 0) + 1));
   const keys = Object.keys(cnt);
-  el.innerHTML = `<span style="color:${PCOL[p.turn]}">${PNAME_BASE[p.turn]}の持ち駒：</span>` + (keys.length ? keys.map((x) =>
-    `<button onclick="rvSelectDrop('${x}')" style="${review.dropPiece === x ? 'border-color:#ff4;color:#ff4;' : ''}">${PC[x]}${cnt[x] > 1 ? '×' + cnt[x] : ''}</button>`).join(' ') : 'なし') +
-    '<span style="color:#678;margin-left:6px;">（駒を選んで盤のマスをクリック）</span>';
+  el.innerHTML = `<span style="color:${PCOL[p.turn]}">${L(`${PNAME_BASE[p.turn]}の持ち駒：`,`${PNAME_BASE[p.turn]}'s hand: `)}</span>` + (keys.length ? keys.map((x) =>
+    `<button onclick="rvSelectDrop('${x}')" style="${review.dropPiece === x ? 'border-color:#ff4;color:#ff4;' : ''}">${PC[x]}${cnt[x] > 1 ? '×' + cnt[x] : ''}</button>`).join(' ') : L('なし','none')) +
+    `<span style="color:#678;margin-left:6px;">${L('（駒を選んで盤のマスをクリック）','(pick a piece, then click a square)')}</span>`;
 }
 
 function rvSelectDrop(piece) {
@@ -201,7 +201,7 @@ function rvSelectDrop(piece) {
 // ── 解析（学習AIで候補手を調べる）──
 function toggleReviewAuto() {
   review.auto = !review.auto;
-  rvEl('review-auto').textContent = review.auto ? '🧠 解析中（局面を動かすと自動で解析）' : '🧠 解析する';
+  rvEl('review-auto').textContent = review.auto ? L('🧠 解析中（局面を動かすと自動で解析）','🧠 Analyzing (changes analyze automatically)') : L('🧠 解析する','🧠 Analyze');
   rvEl('review-auto').style.borderColor = review.auto ? '#44ddff' : '#556';
   if (review.auto) rvAnalyze(true);
 }
@@ -213,12 +213,12 @@ async function rvAnalyze(force = false) {
   if (review.busy) return;           // 解析は1つずつ（終わったら最新の希望の局面を解析する）
   review.busy = true;
   try {
-    if (!(window.LocalAI && window.ort)) throw new Error('学習AIを読み込めません');
-    if (!LocalAI.ready) { rvEl('review-info').textContent = '学習AIを準備中…'; await LocalAI.init(); }
+    if (!(window.LocalAI && window.ort)) throw new Error(L('学習AIを読み込めません',"Couldn't load the neural AI"));
+    if (!LocalAI.ready) { rvEl('review-info').textContent = L('学習AIを準備中…','Getting the neural AI ready…'); await LocalAI.init(); }
     while (review.want && reviewMode) {
       const p = review.want; review.want = null;
       if (p.gover) continue;
-      if (review.line[review.idx] === p) rvEl('review-info').textContent = `解析中…（${thinkMs / 1000}秒）`;
+      if (review.line[review.idx] === p) rvEl('review-info').textContent = L(`解析中…（${thinkMs / 1000}秒）`,`Analyzing… (${thinkMs / 1000}s)`);
       const res = await LocalAI.think({ board: p.board, hand: p.hand, eliminated: p.eliminated, turn: p.turn, moveCount: p.moveCount,
                                         rule: review.rule, timeMs: thinkMs, topN: 8 });
       review.analysis[rvKey(p)] = res;
@@ -226,7 +226,7 @@ async function rvAnalyze(force = false) {
       else if (reviewMode) rvDrawGraph();
     }
   } catch (e) {
-    rvEl('review-info').textContent = '解析できませんでした：' + e.message;
+    rvEl('review-info').textContent = L('解析できませんでした：',"Couldn't analyze: ") + e.message;
   } finally {
     review.busy = false;
   }
@@ -234,7 +234,7 @@ async function rvAnalyze(force = false) {
 
 // ── 表示 ──
 function rvMoveText(m, bd) {
-  if (!m) return '投了';
+  if (!m) return L('投了','Resign');
   if (m.drop) return toSuji(m.tc) + toDan(m.tr) + PC[m.piece] + '打';
   const cell = bd[m.fr][m.fc];
   const name = cell ? (cell.pr ? (PCP[cell.p] || PC[cell.p]) : PC[cell.p]) : '?';
@@ -254,8 +254,8 @@ function rvUpdatePanel() {
   const k = review.idx, N = review.line.length - 1, p = review.line[k], b = review.branch;
   const last = k > 0 ? review.lineMoves[k - 1] : null;
   const inVar = b !== null && k > b;
-  rvEl('review-pos').textContent = (inVar ? '【変化】' : '') + `${k} / ${N}手目` +
-    (last ? `　${PNAME_BASE[last.o]} ${last.text}` : '　開始局面') + (p.gover ? '　（終局）' : `　→ ${PNAME_BASE[p.turn]}の番`);
+  rvEl('review-pos').textContent = (inVar ? L('【変化】','[variation] ') : '') + L(`${k} / ${N}手目`,`Move ${k} / ${N}`) +
+    (last ? `　${PNAME_BASE[last.o]} ${last.text}` : L('　開始局面','　Start')) + (p.gover ? L('　（終局）','　(game over)') : L(`　→ ${PNAME_BASE[p.turn]}の番`,`　→ ${PNAME_BASE[p.turn]} to move`));
   // 本譜の棋譜の行をハイライト（変化中は分かれたところ）
   const hk = b !== null ? Math.min(k, b) : k;
   document.querySelectorAll('#kifu-list > div').forEach((d, i) => d.classList.toggle('review-cur', i === hk - 1));
@@ -264,24 +264,24 @@ function rvUpdatePanel() {
   // 変化の手順
   const vEl = rvEl('review-var');
   if (b !== null) {
-    vEl.innerHTML = `<span style="color:#fc8;">変化（${b}手目から）：</span>` + review.lineMoves.slice(b).map((m, j) =>
+    vEl.innerHTML = `<span style="color:#fc8;">${L(`変化（${b}手目から）：`,`Variation (from move ${b}): `)}</span>` + review.lineMoves.slice(b).map((m, j) =>
       `<span onclick="showReviewPos(${b + j + 1})" style="cursor:pointer;${b + j + 1 === k ? 'background:#ffe2bd;' : ''}color:${PCOL[m.o]}">${b + j + 1}.${m.text}</span>`).join(' ') +
-      ` <button onclick="rvBackToMain()">↩ 本譜に戻る</button>`;
+      ` <button onclick="rvBackToMain()">${L('↩ 本譜に戻る','↩ Back to main line')}</button>`;
   } else vEl.innerHTML = '';
   rvRenderHand();
   // 候補手の一覧
   const a = review.analysis[rvKey(p)], info = rvEl('review-info'), list = rvEl('review-cands');
   if (a) {
     const tot = a.top.reduce((s, x) => s + x.visits, 0) || 1, t = p.turn;
-    info.textContent = `解析：${a.visits}回読んで ${a.sec}秒　局面の勝率予想 青${Math.round(a.value[0] * 100)}% 赤${Math.round(a.value[1] * 100)}% 緑${Math.round(a.value[2] * 100)}%`;
+    info.textContent = L(`解析：${a.visits}回読んで ${a.sec}秒　局面の勝率予想 青${Math.round(a.value[0] * 100)}% 赤${Math.round(a.value[1] * 100)}% 緑${Math.round(a.value[2] * 100)}%`,`Analysis: ${a.visits} visits in ${a.sec}s. Win-rate estimate: Blue ${Math.round(a.value[0] * 100)}%, Red ${Math.round(a.value[1] * 100)}%, Green ${Math.round(a.value[2] * 100)}%`);
     list.innerHTML = a.top.map((x, i) => {
-      const v = x.value ? `${PNAME_BASE[t]}の勝率 <b>${Math.round(x.value[t] * 100)}%</b>（青${Math.round(x.value[0] * 100)} 赤${Math.round(x.value[1] * 100)} 緑${Math.round(x.value[2] * 100)}）` : '';
-      return `<div onclick="rvPlayMove(review.analysis[rvKey(review.line[review.idx])].top[${i}].move)" style="cursor:pointer" title="この手を指して変化を見る">` +
-        `<span style="color:${i ? '#9fb' : '#4df'}">${i + 1}. ${rvMoveText(x.move, p.board)}</span>　読み ${Math.round(x.visits / tot * 100)}%　${v}</div>`;
+      const v = x.value ? L(`${PNAME_BASE[t]}の勝率 <b>${Math.round(x.value[t] * 100)}%</b>（青${Math.round(x.value[0] * 100)} 赤${Math.round(x.value[1] * 100)} 緑${Math.round(x.value[2] * 100)}）`,`${PNAME_BASE[t]} win rate <b>${Math.round(x.value[t] * 100)}%</b> (B${Math.round(x.value[0] * 100)} R${Math.round(x.value[1] * 100)} G${Math.round(x.value[2] * 100)})`) : '';
+      return `<div onclick="rvPlayMove(review.analysis[rvKey(review.line[review.idx])].top[${i}].move)" style="cursor:pointer" title="${L('この手を指して変化を見る','Play this move to see the variation')}">` +
+        `<span style="color:${i ? '#9fb' : '#4df'}">${i + 1}. ${rvMoveText(x.move, p.board)}</span>　${L('読み','search')} ${Math.round(x.visits / tot * 100)}%　${v}</div>`;
     }).join('');
   } else {
     const v = rvValueAt(k);
-    if (!review.auto) info.textContent = v ? `対局中の勝率予想 青${Math.round(v[0] * 100)}% 赤${Math.round(v[1] * 100)}% 緑${Math.round(v[2] * 100)}%` : '「🧠 解析する」で、この局面の候補手を学習AIが調べます';
+    if (!review.auto) info.textContent = v ? L(`対局中の勝率予想 青${Math.round(v[0] * 100)}% 赤${Math.round(v[1] * 100)}% 緑${Math.round(v[2] * 100)}%`,`In-game win-rate estimate: Blue ${Math.round(v[0] * 100)}%, Red ${Math.round(v[1] * 100)}%, Green ${Math.round(v[2] * 100)}%`) : L('「🧠 解析する」で、この局面の候補手を学習AIが調べます','Press "🧠 Analyze" and the neural AI looks for candidate moves here');
     list.innerHTML = '';
   }
   rvDrawGraph();
@@ -358,7 +358,7 @@ function drawReviewOverlay() {
         const yy = top + j * rh + rh / 2;
         if (j === 2 && g.length > 3) {
           ctx.fillStyle = 'rgba(20,12,0,0.85)'; ctx.fillRect(x - CS / 2 + 2, yy - rh / 2 + 1, CS - 4, rh - 2);
-          ctx.fillStyle = '#cde'; ctx.font = '10px sans-serif'; ctx.fillText(`他${g.length - 2}`, x, yy + 1);
+          ctx.fillStyle = '#cde'; ctx.font = '10px sans-serif'; ctx.fillText(L(`他${g.length - 2}`,`+${g.length - 2}`), x, yy + 1);
           continue;
         }
         const { c: cj, i: ij } = g[j], share = cj.visits / tot;
@@ -409,7 +409,7 @@ function rvGraphClick(e) {
 
 // ── 棋譜の読み込み（「📋 棋譜をコピー」の形：{start, moves:[{o, mv, v?} | {o, resign}], human?, ...}）──
 function openLoadKifu() {
-  if (selfPlayMode) { setStatus('自己対局中は棋譜を読み込めません'); return; }
+  if (selfPlayMode) { setStatus(L('自己対局中は棋譜を読み込めません',"Can't load a record during self-play")); return; }
   rvEl('load-kifu').style.display = '';
   rvEl('load-kifu-text').value = '';
   rvEl('load-kifu-text').focus();
@@ -417,14 +417,14 @@ function openLoadKifu() {
 function closeLoadKifu() { rvEl('load-kifu').style.display = 'none'; }
 async function pasteLoadKifu() {
   try { rvEl('load-kifu-text').value = await navigator.clipboard.readText(); }
-  catch (e) { alert('クリップボードを読めませんでした。欄に直接貼り付けてください'); }
+  catch (e) { alert(L('クリップボードを読めませんでした。欄に直接貼り付けてください',"Couldn't read the clipboard. Paste into the box directly")); }
 }
 
 // enter=false なら検討モードに入らず、そのまま対局を続けられる状態にする（rvResumeHere）
 function loadGameRecordText(text, enter = true) {
   let rec;
-  try { rec = JSON.parse(text.trim()); } catch (e) { alert('読み込めません：「📋 棋譜をコピー」で出てくる形（JSON）ではありません'); return false; }
-  if (!rec || !rec.start || !rec.start.board || !Array.isArray(rec.moves)) { alert('読み込めません：start（最初の局面）と moves（指し手）が必要です'); return false; }
+  try { rec = JSON.parse(text.trim()); } catch (e) { alert(L('読み込めません：「📋 棋譜をコピー」で出てくる形（JSON）ではありません',"Can't load: this isn't the format from \"📋 Copy record\" (JSON)")); return false; }
+  if (!rec || !rec.start || !rec.start.board || !Array.isArray(rec.moves)) { alert(L('読み込めません：start（最初の局面）と moves（指し手）が必要です',"Can't load: it needs start (the first position) and moves")); return false; }
   if (editMode) toggleEditMode();
   if (reviewMode) exitReview(false);
   gameGen++;                                  // 考え中のAIの手は捨てる
@@ -432,7 +432,7 @@ function loadGameRecordText(text, enter = true) {
   if (typeof rec.human === 'number') {        // 「あなた」の席も棋譜のとおりに（対局は始めない）
     humanPlayer = rec.human; viewPlayer = rec.human;
     [0, 1, 2].forEach((i) => { PNAME[i] = PNAME_BASE[i]; const b = rvEl('hb' + i); if (b) b.classList.toggle('on', i === rec.human); });
-    PNAME[rec.human] = PNAME_BASE[rec.human] + '(あなた)';
+    PNAME[rec.human] = PNAME_BASE[rec.human] + L('(あなた)',' (you)');
   }
   const s = rvClone(rec.start);
   board = s.board; hand = s.hand; eliminated = s.eliminated; turn = s.turn; moveCount = s.moveCount || 0;
@@ -450,7 +450,7 @@ function loadGameRecordText(text, enter = true) {
         eliminated[m.o] = true;
         if (m.o === humanPlayer) humanEliminated = true;
         gameRecord.moves.push({ o: m.o, resign: true });
-        kifu.push({ fugo: '投了', col: PCOL[m.o], name: PNAME_BASE[m.o] });
+        kifu.push({ fugo: L('投了','Resign'), col: PCOL[m.o], name: PNAME_BASE[m.o] });
         const alive = [0, 1, 2].filter((i) => !eliminated[i]);
         if (alive.length <= 1) { gover = true; winner = alive[0]; }
       } else {
@@ -461,11 +461,11 @@ function loadGameRecordText(text, enter = true) {
       n++;
     }
   } catch (e) {
-    alert(`${n + 1}手目で読み込めなくなりました（${e.message}）。そこまでを読み込みます`);
+    alert(L(`${n + 1}手目で読み込めなくなりました（${e.message}）。そこまでを読み込みます`,`Loading stopped at move ${n + 1} (${e.message}). Loaded up to there`));
   }
   renderKifu(); render();
   const who = Array.isArray(rec.players) ? '（' + rec.players.map((p, i) => PNAME_BASE[i].slice(0, 1) + ':' + p).join(' / ') + '）' : '';
-  setStatus(`📥 ${rec.title || '棋譜'}を読み込みました（${n}手）` + (gover ? '　終局' : `　${PNAME_BASE[turn]}の番`) + who);
+  setStatus(L(`📥 ${rec.title || '棋譜'}を読み込みました（${n}手）`,`📥 Loaded ${rec.title || 'record'} (${n} moves)`) + (gover ? L('　終局','　game over') : L(`　${PNAME_BASE[turn]}の番`,`　${PNAME_BASE[turn]} to move`)) + who);
   closeLoadKifu();
   if (enter && (n > 0 || gameRecord)) enterReview();
   return true;
@@ -484,7 +484,7 @@ window.addEventListener('load', () => {
   if (!g || !/^[\w\-./]+\.json$/.test(g) || g.includes('..')) return;
   fetch(g).then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
     .then((t) => loadGameRecordText(t))
-    .catch((e) => setStatus('棋譜を読み込めませんでした：' + g + '（' + e.message + '）'));
+    .catch((e) => setStatus(L('棋譜を読み込めませんでした：',"Couldn't load the record: ") + g + '（' + e.message + '）'));
 });
 
 window.addEventListener('keydown', (e) => {

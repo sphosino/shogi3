@@ -6,12 +6,18 @@
 const API = location.hostname === 'mataasobo.com' ? 'https://api.mataasobo.com' : 'http://127.0.0.1:8787';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const COLOR = ['青', '赤', '緑'];
-const RULES = [['all', '常に持ち駒', '取った駒は自分の持ち駒'], ['next', 'お裾分け', '取った駒は残りのもう1人へ'], ['off', '消滅あり', '条件をみたさないと消える']];
+const COLOR = EN ? ['Blue', 'Red', 'Green'] : ['青', '赤', '緑'];
+const RULES = EN ? [['all', 'Always keep', 'Captured pieces go to your hand'], ['next', 'Pass it on', 'Captured pieces go to the third player'], ['off', 'Vanish', 'They disappear unless conditions are met']]
+  : [['all', '常に持ち駒', '取った駒は自分の持ち駒'], ['next', 'お裾分け', '取った駒は残りのもう1人へ'], ['off', '消滅あり', '条件をみたさないと消える']];
 const LIMITS = [30, 60, 180];
-const STAMPS = [['hi', 'よろしく！'], ['nice', 'ナイス！'], ['doki', 'ドキッ'], ['eh', 'えっ！？'], ['ouch', 'やられた〜'], ['grr', 'ぐぬぬ'], ['thx', 'ありがと'], ['again', 'もう一局！']];
+const STAMPS = EN ? [['hi', 'Hi!'], ['nice', 'Nice!'], ['doki', 'Whoa'], ['eh', 'Huh?!'], ['ouch', 'Ouch~'], ['grr', 'Grr…'], ['thx', 'Thanks'], ['again', 'Again!']] : [['hi', 'よろしく！'], ['nice', 'ナイス！'], ['doki', 'ドキッ'], ['eh', 'えっ！？'], ['ouch', 'やられた〜'], ['grr', 'ぐぬぬ'], ['thx', 'ありがと'], ['again', 'もう一局！']];
 const CPU_MS = 2000; // CPU の考える時間
 const ROOMID = (new URLSearchParams(location.search).get('room') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// サーバーからのお知らせは日本語で届くので、英語のときはここで置きかえる
+const ERR_EN = { '部屋を作った人だけが決められます': 'Only the host can change this', '対局が始まったら変えられません': "Can't change this after the game starts", 'そのルールはありません': "That rule doesn't exist", 'その持ち時間は選べません': "That time limit isn't available",
+  '部屋を作った人だけが始められます': 'Only the host can start', 'もう始まっています': 'Already started', '今は指せません': "You can't move right now", 'あなたの番ではありません': "It's not your turn", 'その手は指せません': "That move isn't allowed",
+  '今は投了できません': "You can't resign right now", '座っている人だけが投了できます': 'Only seated players can resign', 'もう脱落しています': 'Already eliminated', '対局が終わってからです': 'Only after the game ends', '座っている人だけが押せます': 'Only seated players can press this', '満員です': 'The room is full' };
 
 // ---------- このブラウザの番号と名前（おかしならべと同じ保存場所） ----------
 const ABC = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -44,7 +50,7 @@ function send(msg) { const s = JSON.stringify(msg); if (ws && ws.readyState === 
 let RV = null, rvAt = 0, roomErr = '', watching = false, lastGame = 0;
 function onMsg(m) {
   if (m.t === 'stamp') { showStamp(m.p, m.k); return; }
-  if (m.t === 'err') { pending = ''; if (m.msg !== '盤がずれています') toast(m.msg); if (!m.room) return; }
+  if (m.t === 'err') { pending = ''; if (m.msg !== '盤がずれています') toast(EN && ERR_EN[m.msg] || m.msg); if (!m.room) return; }
   if (!m.room) return;
   const before = RV;
   RV = m.room; rvAt = Date.now();
@@ -87,7 +93,7 @@ function lastMoveOf(st) {
   return { ...mv, o: x.o, fugo };
 }
 // 席の名前（あなた・CPU）
-const seatName = (i) => (!RV.seats[i] || RV.seats[i].empty ? 'CPU（' + COLOR[i] + '）' : RV.seats[i].name) + (i === RV.you ? '（あなた）' : '');
+const seatName = (i) => (!RV.seats[i] || RV.seats[i].empty ? L('CPU（' + COLOR[i] + '）', 'CPU (' + COLOR[i] + ')') : RV.seats[i].name) + (i === RV.you ? L('（あなた）', ' (you)') : '');
 window.pName = (o) => (RV ? seatName(o) : PNAME_BASE[o]);
 // 盤のまわりの名前は HTML に出すので、盤には直前の手だけを書く
 window.drawPlayerLabels = function () {
@@ -229,13 +235,13 @@ function sound() {
 // 盤の手前・向こう・横のだれが座っているか（render.js の drawAllHands と同じ並び）
 function sides() {
   const v = viewPlayer;
-  return v === 0 ? { top: 1, side: 2, sideName: '右' } : v === 1 ? { top: 0, side: 2, sideName: '左' } : { top: 1, side: 0, sideName: '左' };
+  return v === 0 ? { top: 1, side: 2, sideName: L('右', 'right') } : v === 1 ? { top: 0, side: 2, sideName: L('左', 'left') } : { top: 1, side: 0, sideName: L('左', 'left') };
 }
 function plHTML(i, where) {
   const s = RV.seats[i], st = RV.state, out = st && st.elim[i];
   return `<div class="pl${st && !st.over && st.turn === i ? ' turn' : ''}${out ? ' out' : ''}${i === RV.you ? ' me' : ''}" id="pl${i}" style="--c:${PCOL[i]}">
     <span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span>
-    <span class="nm">${esc(seatName(i))}${out ? ' ☠' : ''}${!s.empty && !s.online ? '<small class="where">（るす）</small>' : ''}</span>
+    <span class="nm">${esc(seatName(i))}${out ? ' ☠' : ''}${!s.empty && !s.online ? `<small class="where">${L('（るす）', ' (away)')}</small>` : ''}</span>
     ${where ? `<span class="where">${where}</span>` : ''}<span class="tm" id="tm${i}"></span>${popHTML(i)}</div>`;
 }
 function drawClocks() {
@@ -244,7 +250,7 @@ function drawClocks() {
     const st = RV.state;
     if (!st || st.over || st.turn !== i) { el.textContent = ''; continue; }
     const l = leftMs();
-    if (l === null) { el.textContent = RV.seats[i].empty || RV.auto ? '考え中…' : ''; el.classList.remove('low'); continue; }
+    if (l === null) { el.textContent = RV.seats[i].empty || RV.auto ? L('考え中…', 'thinking…') : ''; el.classList.remove('low'); continue; }
     const sec = Math.max(0, Math.ceil(l / (RV.secMs || 1000)));
     el.textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
     el.classList.toggle('low', sec <= 10);
@@ -265,8 +271,8 @@ function draw() {
   $('mePl').innerHTML = RV.you >= 0 ? plHTML(RV.you, '') : plHTML(0, '');
   drawClocks();
   const st = RV.state;
-  $('info').textContent = st.over ? '' : RV.you >= 0 && st.elim[RV.you] ? '脱落しました。残りの2人の対局を見ています'
-    : myTurn() ? 'あなたの番です' : seatName(st.turn) + ' の番です';
+  $('info').textContent = st.over ? '' : RV.you >= 0 && st.elim[RV.you] ? L('脱落しました。残りの2人の対局を見ています', "You're out. Watching the other 2 play")
+    : myTurn() ? L('あなたの番です', 'Your turn') : L(seatName(st.turn) + ' の番です', seatName(st.turn) + "'s turn");
   // スタンプ（座っている人だけ）
   const sb = $('stamps');
   if (RV.you >= 0 && !sb.childElementCount) {
@@ -276,11 +282,11 @@ function draw() {
   // CPU の席があるあいだは、対局中でもともだちを呼べる（CPU の席と交代して途中から入れる）
   const canInvite = RV.you >= 0 && !st.over && RV.seats.some((s) => s.empty);
   $('gameBtns').innerHTML = RV.you >= 0
-    ? `${canInvite ? '<button class="btn" type="button" id="invite">👥 ともだちを呼ぶ</button>' : ''}${st.over || st.elim[RV.you] ? '' : '<button class="btn" type="button" id="resign">投了</button>'}<button class="btn" type="button" id="leave">部屋を出る</button>`
-    : RV.seats.some((s) => s.empty) ? '<button class="btn primary" type="button" id="joinNow">CPUと交代して参加する</button>' : '';
-  on('resign', () => { if ($('resign').dataset.sure) { send({ t: 'resign', game: RV.game }); return; } $('resign').dataset.sure = 1; $('resign').textContent = 'ほんとうに投了する'; });
+    ? `${canInvite ? `<button class="btn" type="button" id="invite">${L('👥 ともだちを呼ぶ', '👥 Invite friends')}</button>` : ''}${st.over || st.elim[RV.you] ? '' : `<button class="btn" type="button" id="resign">${L('投了', 'Resign')}</button>`}<button class="btn" type="button" id="leave">${L('部屋を出る', 'Leave room')}</button>`
+    : RV.seats.some((s) => s.empty) ? `<button class="btn primary" type="button" id="joinNow">${L('CPUと交代して参加する', 'Take over from the CPU')}</button>` : '';
+  on('resign', () => { if ($('resign').dataset.sure) { send({ t: 'resign', game: RV.game }); return; } $('resign').dataset.sure = 1; $('resign').textContent = L('ほんとうに投了する', 'Really resign'); });
   on('leave', () => { send({ t: 'leave' }); location.href = 'room.html'; });
-  on('joinNow', () => { watching = false; send({ t: 'join', name: myName() || 'ゲスト' }); });
+  on('joinNow', () => { watching = false; send({ t: 'join', name: myName() || L('ゲスト', 'Guest') }); });
   on('invite', () => { inviteOpen = !inviteOpen; renderInvite(canInvite); });
   renderInvite(canInvite);
   render();
@@ -293,46 +299,46 @@ function renderInvite(can) {
   const el = $('invitePanel'), show = inviteOpen && can;
   el.hidden = !show;
   if (!show || el.childElementCount) return;
-  const url = location.origin + location.pathname + '?room=' + RV.id, msg = '三人将棋を指してるよ！CPUの席と交代して入ってきて ' + url;
-  el.innerHTML = `<p class="note">空いた席（CPU）に、ともだちが<b>途中から交代して</b>入れます。このリンクを送ってください。</p>
-    <div class="invite"><input id="inv2" readonly value="${esc(url)}"><button class="btn" id="copy2" type="button">コピー</button></div>
-    <div class="btnrow"><a class="btn" href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">LINEで送る</a><a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Xで呼ぶ</a></div>`;
-  on('copy2', () => { const i = $('inv2'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast('コピーしました'), () => { document.execCommand('copy'); toast('コピーしました'); }); });
+  const url = location.origin + location.pathname + '?room=' + RV.id, msg = L('三人将棋を指してるよ！CPUの席と交代して入ってきて ', "I'm playing Three-Player Shogi! Take over a CPU seat and join ") + url;
+  el.innerHTML = `<p class="note">${L('空いた席（CPU）に、ともだちが<b>途中から交代して</b>入れます。このリンクを送ってください。', 'Friends can <b>take over</b> an empty (CPU) seat mid-game. Send them this link.')}</p>
+    <div class="invite"><input id="inv2" readonly value="${esc(url)}"><button class="btn" id="copy2" type="button">${L('コピー', 'Copy')}</button></div>
+    <div class="btnrow">${EN ? '' : `<a class="btn" href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">LINEで送る</a>`}<a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${L('Xで呼ぶ', 'Invite on X')}</a></div>`;
+  on('copy2', () => { const i = $('inv2'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast(L('コピーしました', 'Copied')), () => { document.execCommand('copy'); toast(L('コピーしました', 'Copied')); }); });
 }
 
 function renderLobby(show) {
   const el = $('lobby');
   if (!show) { el.hidden = true; lobbyHTML = ''; return; }
   let h;
-  if (!RV) h = `<h2>${roomErr ? '部屋が見つかりません' : '部屋につないでいます…'}</h2>${roomErr ? `<p class="note">${esc(roomErr)}</p><a class="btn primary" href="room.html">部屋の一覧へ</a>` : ''}`;
+  if (!RV) h = `<h2>${roomErr ? L('部屋が見つかりません', 'Room not found') : L('部屋につないでいます…', 'Connecting to the room…')}</h2>${roomErr ? `<p class="note">${esc(roomErr)}</p><a class="btn primary" href="room.html">${L('部屋の一覧へ', 'Room list')}</a>` : ''}`;
   else {
     const url = location.origin + location.pathname + '?room=' + RV.id, you = RV.you, lobby = RV.phase === 'lobby', host = you === 0;
-    const seats = RV.seats.map((s, i) => `<div class="seat"><span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span><span class="nm${s.empty ? ' empty' : ''}">${COLOR[i]}：${s.empty ? (lobby ? 'あき（始めたらCPU）' : 'CPU') : esc(s.name) + (i === you ? '（あなた）' : '')}</span><span class="on${s.online ? ' y' : ''}">${s.empty ? (lobby ? '<span class="waiting">待っています…</span>' : '') : s.online ? '● いる' : 'るす'}</span></div>`).join('');
-    const nameBox = `<label>あなたの名前<input id="myName" maxlength="8" placeholder="なまえ" value="${esc(you >= 0 ? RV.seats[you].name : myName())}"></label>`;
-    const ruleRow = `<label>取った駒${host ? '' : '（部屋を作った人が決めます）'}<div class="choices">${RULES.map(([k, n, d]) => `<button type="button" data-rule="${k}" class="${RV.rule === k ? 'on' : ''}"${host ? '' : ' disabled'}>${n}<small>${d}</small></button>`).join('')}</div></label>`;
-    const limitRow = `<label>1手の持ち時間${host ? '' : '（部屋を作った人が決めます）'}<div class="choices">${LIMITS.map((t) => `<button type="button" data-sec="${t}" class="${RV.limit === t ? 'on' : ''}"${host ? '' : ' disabled'}>${t < 60 ? t + '秒' : t / 60 + '分'}</button>`).join('')}</div></label>`;
+    const seats = RV.seats.map((s, i) => `<div class="seat"><span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span><span class="nm${s.empty ? ' empty' : ''}">${COLOR[i]}${L('：', ': ')}${s.empty ? (lobby ? L('あき（始めたらCPU）', 'Open (CPU once started)') : 'CPU') : esc(s.name) + (i === you ? L('（あなた）', ' (you)') : '')}</span><span class="on${s.online ? ' y' : ''}">${s.empty ? (lobby ? `<span class="waiting">${L('待っています…', 'waiting…')}</span>` : '') : s.online ? L('● いる', '● here') : L('るす', 'away')}</span></div>`).join('');
+    const nameBox = `<label>${L('あなたの名前', 'Your name')}<input id="myName" maxlength="8" placeholder="${L('なまえ', 'name')}" value="${esc(you >= 0 ? RV.seats[you].name : myName())}"></label>`;
+    const ruleRow = `<label>${L('取った駒', 'Captured pieces')}${host ? '' : L('（部屋を作った人が決めます）', ' (the host decides)')}<div class="choices">${RULES.map(([k, n, d]) => `<button type="button" data-rule="${k}" class="${RV.rule === k ? 'on' : ''}"${host ? '' : ' disabled'}>${n}<small>${d}</small></button>`).join('')}</div></label>`;
+    const limitRow = `<label>${L('1手の持ち時間', 'Time per move')}${host ? '' : L('（部屋を作った人が決めます）', ' (the host decides)')}<div class="choices">${LIMITS.map((t) => `<button type="button" data-sec="${t}" class="${RV.limit === t ? 'on' : ''}"${host ? '' : ' disabled'}>${t < 60 ? t + L('秒', 's') : t / 60 + L('分', ' min')}</button>`).join('')}</div></label>`;
     let body;
     if (you >= 0) {
-      const msg = '三人将棋を指そう！ ' + url;
-      body = nameBox + `<label>① このリンクを友達に送る<div class="invite"><input id="inv" readonly value="${esc(url)}"><button class="btn" id="copy" type="button">コピー</button></div></label>
-        <div class="btnrow"><a class="btn" href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">LINEで送る</a><a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Xで呼ぶ</a></div>
-        <p class="note">② 友達がリンクを開いて「参加する」を押すと、上に名前が出ます</p>` + ruleRow + limitRow
-        + (host ? `<label class="check"><input type="checkbox" id="listed"${RV.listed ? ' checked' : ''}>部屋の一覧に出す（だれでも参加できる）</label>
-            <button class="btn primary" id="go" type="button">③ はじめる</button><p class="note">そろわなくても始められます。空いた席にはCPUが入ります。先手は青です</p>`
-          : `<p class="note">③ ${esc(RV.seats[0].name)} さんが「はじめる」を押すのを待っています</p>`);
+      const msg = L('三人将棋を指そう！ ', "Let's play Three-Player Shogi! ") + url;
+      body = nameBox + `<label>${L('① このリンクを友達に送る', '① Send this link to friends')}<div class="invite"><input id="inv" readonly value="${esc(url)}"><button class="btn" id="copy" type="button">${L('コピー', 'Copy')}</button></div></label>
+        <div class="btnrow">${EN ? '' : `<a class="btn" href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">LINEで送る</a>`}<a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${L('Xで呼ぶ', 'Invite on X')}</a></div>
+        <p class="note">${L('② 友達がリンクを開いて「参加する」を押すと、上に名前が出ます', '② When a friend opens the link and presses "Join", their name appears above')}</p>` + ruleRow + limitRow
+        + (host ? `<label class="check"><input type="checkbox" id="listed"${RV.listed ? ' checked' : ''}>${L('部屋の一覧に出す（だれでも参加できる）', 'List in the room list (anyone can join)')}</label>
+            <button class="btn primary" id="go" type="button">${L('③ はじめる', '③ Start')}</button><p class="note">${L('そろわなくても始められます。空いた席にはCPUが入ります。先手は青です', 'You can start without a full room. Empty seats get the CPU. Blue moves first')}</p>`
+          : `<p class="note">${L(`③ ${esc(RV.seats[0].name)} さんが「はじめる」を押すのを待っています`, `③ Waiting for ${esc(RV.seats[0].name)} to press "Start"`)}</p>`);
     } else if (RV.seats.some((s) => s.empty)) {
       body = lobby
-        ? `<p class="note">${esc(RV.seats.find((s) => !s.empty)?.name || 'だれか')} さんの部屋に招待されました</p>` + nameBox + '<button class="btn primary" id="join" type="button">参加する</button>'
-        : `<p class="note">${RV.kicked ? '時間切れが続いたので、CPUが代わりに指しています。CPUと交代すれば、続きから指せます' : 'もう対局が始まっています。CPUの席と交代して、途中から参加できます'}</p>` + nameBox
-          + '<div class="btnrow"><button class="btn primary" id="join" type="button">CPUと交代して参加する</button><button class="btn" id="watch" type="button">見るだけ</button></div>';
-    } else body = `<p class="note">この部屋は満員です${lobby ? '' : '。対局を見ることはできます'}</p><div class="btnrow">${lobby ? '' : '<button class="btn primary" id="watch" type="button">見るだけ</button>'}<a class="btn" href="room.html">部屋の一覧へ</a></div>`;
+        ? `<p class="note">${L(`${esc(RV.seats.find((s) => !s.empty)?.name || 'だれか')} さんの部屋に招待されました`, `You've been invited to ${esc(RV.seats.find((s) => !s.empty)?.name || 'someone')}'s room`)}</p>` + nameBox + `<button class="btn primary" id="join" type="button">${L('参加する', 'Join')}</button>`
+        : `<p class="note">${RV.kicked ? L('時間切れが続いたので、CPUが代わりに指しています。CPUと交代すれば、続きから指せます', 'You timed out repeatedly, so the CPU is playing for you. Take over from the CPU to keep playing') : L('もう対局が始まっています。CPUの席と交代して、途中から参加できます', 'The game has already started. You can take over a CPU seat and join mid-game')}</p>` + nameBox
+          + `<div class="btnrow"><button class="btn primary" id="join" type="button">${L('CPUと交代して参加する', 'Take over from the CPU')}</button><button class="btn" id="watch" type="button">${L('見るだけ', 'Just watch')}</button></div>`;
+    } else body = `<p class="note">${L('この部屋は満員です', 'This room is full')}${lobby ? '' : L('。対局を見ることはできます', '. You can still watch')}</p><div class="btnrow">${lobby ? '' : `<button class="btn primary" id="watch" type="button">${L('見るだけ', 'Just watch')}</button>`}<a class="btn" href="room.html">${L('部屋の一覧へ', 'Room list')}</a></div>`;
     // 今の状態を、いちばん上に大きく出す（人待ちだと分かるように）
     const n = RV.seats.filter((s) => !s.empty).length;
     const status = !lobby ? '' : you === 0
-      ? `<div class="status"><b>⏳ ともだちを待っています（${n}/3人）</b><span>下のリンクを送って呼ぼう。そろわなくても「はじめる」でCPUと指せて、始めたあとも、ともだちはCPUの席と交代して途中から入れます</span></div>`
-      : you > 0 ? `<div class="status"><b>⏳ ${esc(RV.seats[0].name)} さんが始めるのを待っています（${n}/3人）</b><span>そろったら、${esc(RV.seats[0].name)} さんが「はじめる」を押します</span></div>` : '';
-    document.title = (lobby && you >= 0 ? '（人待ち）' : '') + '三人将棋 みんなと指す｜また遊ぼ';
-    h = `<h2>${lobby ? (RV.seats[0].empty ? '' : esc(RV.seats[0].name) + ' の部屋') : '対局中です'}</h2>${status}<div class="seats">${seats}</div>${body}`;
+      ? `<div class="status"><b>${L(`⏳ ともだちを待っています（${n}/3人）`, `⏳ Waiting for friends (${n}/3)`)}</b><span>${L('下のリンクを送って呼ぼう。そろわなくても「はじめる」でCPUと指せて、始めたあとも、ともだちはCPUの席と交代して途中から入れます', 'Send the link below to invite them. Press "Start" to play the CPU without a full room, and friends can still take over a CPU seat mid-game')}</span></div>`
+      : you > 0 ? `<div class="status"><b>${L(`⏳ ${esc(RV.seats[0].name)} さんが始めるのを待っています（${n}/3人）`, `⏳ Waiting for ${esc(RV.seats[0].name)} to start (${n}/3)`)}</b><span>${L(`そろったら、${esc(RV.seats[0].name)} さんが「はじめる」を押します`, `When everyone's here, ${esc(RV.seats[0].name)} will press "Start"`)}</span></div>` : '';
+    document.title = (lobby && you >= 0 ? L('（人待ち）', '(waiting) ') : '') + L('三人将棋 みんなと指す｜また遊ぼ', 'Three-Player Shogi: Play Online');
+    h = `<h2>${lobby ? (RV.seats[0].empty ? '' : L(esc(RV.seats[0].name) + ' の部屋', esc(RV.seats[0].name) + "'s room")) : L('対局中です', 'Game in progress')}</h2>${status}<div class="seats">${seats}</div>${body}`;
   }
   if (h === lobbyHTML && !el.hidden) return; // 同じなら描き直さない（入力中の名前が消えないように）
   const focused = document.activeElement && document.activeElement.id === 'myName', typed = focused ? document.activeElement.value : null;
@@ -343,27 +349,27 @@ function renderLobby(show) {
     nb.addEventListener('input', () => saveName(nb.value.trim()));
     nb.addEventListener('change', () => { const v = nb.value.trim(); saveName(v); if (RV && RV.you >= 0 && v) send({ t: 'join', name: v }); });
   }
-  on('copy', () => { const i = $('inv'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast('コピーしました'), () => { document.execCommand('copy'); toast('コピーしました'); }); });
+  on('copy', () => { const i = $('inv'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast(L('コピーしました', 'Copied')), () => { document.execCommand('copy'); toast(L('コピーしました', 'Copied')); }); });
   on('go', () => { gtag('event', 'shogi_room_start', { seated: RV.seats.filter((s) => !s.empty).length }); send({ t: 'start' }); });
   on('watch', () => { watching = true; draw(); });
-  on('join', () => { const v = ($('myName').value || '').trim() || 'ゲスト'; saveName(v); gtag('event', 'shogi_room_join'); send({ t: 'join', name: v }); });
+  on('join', () => { const v = ($('myName').value || '').trim() || L('ゲスト', 'Guest'); saveName(v); gtag('event', 'shogi_room_join'); send({ t: 'join', name: v }); });
   el.querySelectorAll('button[data-rule]').forEach((b) => b.addEventListener('click', () => send({ t: 'rule', rule: b.dataset.rule })));
   el.querySelectorAll('button[data-sec]').forEach((b) => b.addEventListener('click', () => send({ t: 'limit', sec: +b.dataset.sec })));
   const ls = $('listed'); if (ls) ls.addEventListener('change', () => send({ t: 'listed', on: ls.checked }));
 }
 
 // 決着：順位・勝ち方・「もう一局」・検討へ
-const WIN_TYPE = { king: '玉を取って決着', try: '入玉で決着', limit: '500手で、駒の価値の合計で決着' };
+const WIN_TYPE = EN ? { king: 'Won by capturing the king', try: 'Won by king entry', limit: 'Decided at 500 moves by total piece value' } : { king: '玉を取って決着', try: '入玉で決着', limit: '500手で、駒の価値の合計で決着' };
 function renderResult() {
   const st = RV.state, el = $('result'), you = RV.you, n = RV.seats.filter((s) => !s.empty).length;
   const meSeat = RV.seats[you], k = RV.seats.filter((s) => s.voted).length;
   const resigned = st.log.some((x) => x.resign) && st.winType === 'king';
-  const rows = (RV.ranking || []).map((p, r) => `<div class="seat"><b>${r + 1}位</b><span class="dot" style="--c:${PCOL[p]};background:${PCOL[p]}"></span><span class="nm">${esc(seatName(p))}</span><span class="on">${RV.wins[p]}勝</span></div>`).join('');
-  const againBtn = !meSeat ? '' : meSeat.voted ? `<button class="btn primary" type="button" disabled>みんなを待っています（${k}/${n}）</button>`
-    : `<button class="btn primary" type="button" id="again">${n > 1 ? `この${n}人でもう一局` : 'もう一局'}${k ? `（${k}/${n}）` : ''}</button>`;
-  el.innerHTML = `<div class="big" style="color:${PCOL[st.winner]}">${esc(seatName(st.winner))} の勝ち！</div>
-    <p class="note" style="text-align:center">${resigned ? '投了と玉取りで決着' : WIN_TYPE[st.winType] || ''}・${st.moves}手</p>
-    <div class="rank">${rows}</div><div class="btnrow">${againBtn}<button class="btn" type="button" id="review">この対局を検討する</button>${you >= 0 ? '<button class="btn" type="button" id="shareX">結果をXでシェア</button>' : ''}</div>`;
+  const rows = (RV.ranking || []).map((p, r) => `<div class="seat"><b>${L(`${r + 1}位`, ['1st', '2nd', '3rd'][r])}</b><span class="dot" style="--c:${PCOL[p]};background:${PCOL[p]}"></span><span class="nm">${esc(seatName(p))}</span><span class="on">${L(`${RV.wins[p]}勝`, `${RV.wins[p]} ${RV.wins[p] === 1 ? 'win' : 'wins'}`)}</span></div>`).join('');
+  const againBtn = !meSeat ? '' : meSeat.voted ? `<button class="btn primary" type="button" disabled>${L('みんなを待っています', 'Waiting for everyone')}（${k}/${n}）</button>`
+    : `<button class="btn primary" type="button" id="again">${n > 1 ? L(`この${n}人でもう一局`, `Play again with these ${n}`) : L('もう一局', 'Play again')}${k ? `（${k}/${n}）` : ''}</button>`;
+  el.innerHTML = `<div class="big" style="color:${PCOL[st.winner]}">${L(esc(seatName(st.winner)) + ' の勝ち！', esc(seatName(st.winner)) + ' wins!')}</div>
+    <p class="note" style="text-align:center">${resigned ? L('投了と玉取りで決着', 'Decided by resignation and king capture') : WIN_TYPE[st.winType] || ''}${L(`・${st.moves}手`, ` · ${st.moves} moves`)}</p>
+    <div class="rank">${rows}</div><div class="btnrow">${againBtn}<button class="btn" type="button" id="review">${L('この対局を検討する', 'Review this game')}</button>${you >= 0 ? `<button class="btn" type="button" id="shareX">${L('結果をXでシェア', 'Share your result on X')}</button>` : ''}</div>`;
   on('again', () => send({ t: 'again' }));
   on('review', openReview);
   on('shareX', () => Share.postRoom(st, (RV.ranking || []).indexOf(you) + 1, you));
@@ -372,9 +378,9 @@ function renderResult() {
 // 棋譜を「ひとりで指す」画面にわたして、検討画面で開く（shogi3.html#review）
 function openReview() {
   const s0 = initialState();
-  const rec = { title: 'みんなと指した対局', start: { board: s0.board, hand: s0.hand, eliminated: [false, false, false], turn: 0, moveCount: 0, rule: keepAllPieces },
-    moves: RV.state.log, human: RV.you >= 0 ? RV.you : undefined, players: RV.seats.map((s, i) => seatName(i).replace('（あなた）', '')) };
-  try { localStorage.setItem('shogi3-review', JSON.stringify(rec)); } catch (e) { toast('棋譜を渡せませんでした'); return; }
+  const rec = { title: L('みんなと指した対局', 'an online game'), start: { board: s0.board, hand: s0.hand, eliminated: [false, false, false], turn: 0, moveCount: 0, rule: keepAllPieces },
+    moves: RV.state.log, human: RV.you >= 0 ? RV.you : undefined, players: RV.seats.map((s, i) => seatName(i).replace(L('（あなた）', ' (you)'), '')) };
+  try { localStorage.setItem('shogi3-review', JSON.stringify(rec)); } catch (e) { toast(L('棋譜を渡せませんでした', "Couldn't hand over the record")); return; }
   window.open('shogi3.html#review', '_blank');
 }
 // 対局の最初の局面（game.js の init と同じ並び）
@@ -406,31 +412,31 @@ let roomsTimer = null;
 async function showRooms() {
   const el = $('rooms');
   const paint = (list, err) => {
-    const tag = (r) => (r.phase === 'lobby' ? '<span class="tag wait">人待ち</span>' : r.seats.includes(null) ? '<span class="tag join">途中参加OK</span>' : r.phase === 'over' ? '<span class="tag">終わったところ</span>' : '<span class="tag">対局中</span>');
-    const rows = list === null ? `<p class="note">${esc(err || 'さがしています…')}</p>`
-      : list.length ? list.map((r) => `<a class="roomrow" href="?room=${r.id}"><span class="who">${esc((r.seats.find(Boolean) || { name: 'だれか' }).name)} の部屋<small class="note" style="margin-left:6px">${(RULES.find((x) => x[0] === r.rule) || RULES[0])[1]}・1手${r.limit < 60 ? r.limit + '秒' : r.limit / 60 + '分'}</small></span>${tag(r)}<span class="seatsm">${r.seats.map((s, i) => `<span style="color:${PCOL[i]}">${s ? esc(s.name) + (s.online ? '' : '（るす）') : 'あき'}</span>`).join('<span>・</span>')}</span></a>`).join('')
-      : '<p class="note">まだ部屋がありません。作って友達を呼んでみよう</p>';
-    el.innerHTML = `<h2>みんなと指す</h2><p class="note">部屋を作ってリンクを送ると、ともだちと3人で指せます。空いた席にはCPUが入ります。</p>
-      <button class="btn primary" id="mkroom" type="button">＋ 部屋を作る</button><div class="seats">${rows}</div>
-      <a class="btn" href="shogi3.html">ひとりで指す（CPUと対局・検討）</a>`;
+    const tag = (r) => (r.phase === 'lobby' ? `<span class="tag wait">${L('人待ち', 'Waiting')}</span>` : r.seats.includes(null) ? `<span class="tag join">${L('途中参加OK', 'Join in')}</span>` : r.phase === 'over' ? `<span class="tag">${L('終わったところ', 'Just ended')}</span>` : `<span class="tag">${L('対局中', 'Playing')}</span>`);
+    const rows = list === null ? `<p class="note">${esc(err || L('さがしています…', 'Searching…'))}</p>`
+      : list.length ? list.map((r) => `<a class="roomrow" href="?room=${r.id}"><span class="who">${L(`${esc((r.seats.find(Boolean) || { name: 'だれか' }).name)} の部屋`, `${esc((r.seats.find(Boolean) || { name: 'Someone' }).name)}'s room`)}<small class="note" style="margin-left:6px">${(RULES.find((x) => x[0] === r.rule) || RULES[0])[1]}${L('・1手', ' · ')}${r.limit < 60 ? r.limit + L('秒', 's') : r.limit / 60 + L('分', ' min')}${L('', ' per move')}</small></span>${tag(r)}<span class="seatsm">${r.seats.map((s, i) => `<span style="color:${PCOL[i]}">${s ? esc(s.name) + (s.online ? '' : L('（るす）', ' (away)')) : L('あき', 'Open')}</span>`).join('<span>・</span>')}</span></a>`).join('')
+      : `<p class="note">${L('まだ部屋がありません。作って友達を呼んでみよう', 'No rooms yet. Make one and invite friends')}</p>`;
+    el.innerHTML = `<h2>${L('みんなと指す', 'Play online')}</h2><p class="note">${L('部屋を作ってリンクを送ると、ともだちと3人で指せます。空いた席にはCPUが入ります。', 'Make a room and send the link to play with 2 friends. Empty seats get the CPU.')}</p>
+      <button class="btn primary" id="mkroom" type="button">${L('＋ 部屋を作る', '+ Make a room')}</button><div class="seats">${rows}</div>
+      <a class="btn" href="shogi3.html">${L('ひとりで指す（CPUと対局・検討）', 'Play solo (vs CPU, review)')}</a>`;
     on('mkroom', makeRoom);
   };
   el.hidden = false;
   paint(null);
   const load = async () => {
     try { const r = await fetch(API + '/rooms?kind=shogi3'); paint((await r.json()).rooms); }
-    catch (e) { paint(null, '一覧を取れませんでした。通信を確かめてください'); }
+    catch (e) { paint(null, L('一覧を取れませんでした。通信を確かめてください', "Couldn't load the room list. Check your connection")); }
     roomsTimer = setTimeout(load, 5000);
   };
   load();
 }
 async function makeRoom() {
-  gtag('event', 'shogi_room_create'); toast('部屋を作っています…');
+  gtag('event', 'shogi_room_create'); toast(L('部屋を作っています…', 'Making a room…'));
   try {
-    const r = await fetch(API + '/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pid: me(), name: myName() || 'ゲスト', kind: 'shogi3' }) });
+    const r = await fetch(API + '/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pid: me(), name: myName() || L('ゲスト', 'Guest'), kind: 'shogi3' }) });
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
     location.href = '?room=' + j.id;
-  } catch (e) { toast('部屋を作れませんでした。少し時間をおいて、もう一度ためしてください'); }
+  } catch (e) { toast(L('部屋を作れませんでした。少し時間をおいて、もう一度ためしてください', "Couldn't make a room. Please wait a bit and try again")); }
 }
 
 // ---------- はじめ ----------
@@ -444,5 +450,5 @@ window.addEventListener('DOMContentLoaded', () => {
   draw();
   connect(ROOMID);
   // 部屋がない（ID がちがう）ときは、WebSocket がつながらないので一覧へ案内する
-  setTimeout(() => { if (!RV) { roomErr = 'リンクが古いか、まちがっているかもしれません'; draw(); } }, 6000);
+  setTimeout(() => { if (!RV) { roomErr = L('リンクが古いか、まちがっているかもしれません', 'The link may be old or wrong'); draw(); } }, 6000);
 });

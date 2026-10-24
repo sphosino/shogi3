@@ -1,3 +1,5 @@
+// 言葉は i18n.js が globalThis.L・EN に置く。ないとき（tools/selfplay.js などの Node）は日本語
+if (typeof globalThis.L !== 'function') { globalThis.L = (ja) => ja; globalThis.EN = false; }
 ﻿
 // =====================================================================
 // 三人将棋
@@ -12,11 +14,11 @@ let canvas, ctx;
 // ── AI定数 ──
 // 難易度設定テーブル
 const DIFFICULTY_LEVELS = {
-  beginner: { label:'入門', depth:1, noise:200, emoji:'🌱', timeMs:500  },
-  easy:     { label:'初級', depth:3, noise:80,  emoji:'🌿', timeMs:1000 },
-  normal:   { label:'中級', depth:4, noise:60,  emoji:'⚔️', timeMs:2000 },
-  hard:     { label:'上級', depth:5, noise:20,  emoji:'🔥', timeMs:4000 },
-  net:      { label:'学習AI', depth:4, noise:0, emoji:'🧠', timeMs:2000, net:true }, // 考える時間は netTimeMs（画面で選ぶ）
+  beginner: { label:L('入門','Beginner'), depth:1, noise:200, emoji:'🌱', timeMs:500  },
+  easy:     { label:L('初級','Easy'), depth:3, noise:80,  emoji:'🌿', timeMs:1000 },
+  normal:   { label:L('中級','Normal'), depth:4, noise:60,  emoji:'⚔️', timeMs:2000 },
+  hard:     { label:L('上級','Hard'), depth:5, noise:20,  emoji:'🔥', timeMs:4000 },
+  net:      { label:L('学習AI','Neural AI'), depth:4, noise:0, emoji:'🧠', timeMs:2000, net:true }, // 考える時間は netTimeMs（画面で選ぶ）
 };
 const AI_MAX_DEPTH = 12; // 反復深化の上限深さ（時間切れで実際はこれより浅く終わる）
 let currentDifficulty = 'normal';
@@ -89,7 +91,7 @@ const PVP = {FU:400, KY:200, KE:150, GIN:100, KAKU:500, HI:450}; // 成り駒の
 const PC  = {FU:'歩', KY:'香', KE:'桂', GIN:'銀', KIN:'金', HI:'飛', KAKU:'角', OU:'玉'};
 const PCP = {FU:'と', KY:'杏', KE:'今', GIN:'全', KAKU:'馬', HI:'龍'};
 const PCOL     = ['#4488ff', '#ff4433', '#33cc55'];
-const PNAME_BASE = ['青将', '赤将', '緑将'];
+const PNAME_BASE = EN ? ['Blue', 'Red', 'Green'] : ['青将', '赤将', '緑将'];
 const PNAME    = PNAME_BASE.slice(); // humanPlayerに応じて動的更新
 const DRAW_ANGLE = [0, Math.PI, -Math.PI/2]; // 駒の向き（プレイヤー別）
 
