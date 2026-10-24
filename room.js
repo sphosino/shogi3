@@ -15,7 +15,7 @@ const CPU_MS = 2000; // CPU の考える時間
 const ROOMID = (new URLSearchParams(location.search).get('room') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 // サーバーからのお知らせは日本語で届くので、英語のときはここで置きかえる
-const ERR_EN = { '部屋を作った人だけが決められます': 'Only the host can change this', '対局が始まったら変えられません': "Can't change this after the game starts", 'そのルールはありません': "That rule doesn't exist", 'その持ち時間は選べません': "That time limit isn't available",
+const ERR_EN = { 'みんなの準備OKを待っています': 'Waiting for everyone to be ready', '座っている人だけが押せます': 'Only seated players can do this', '部屋を作った人だけが決められます': 'Only the host can change this', '対局が始まったら変えられません': "Can't change this after the game starts", 'そのルールはありません': "That rule doesn't exist", 'その持ち時間は選べません': "That time limit isn't available",
   '部屋を作った人だけが始められます': 'Only the host can start', 'もう始まっています': 'Already started', '今は指せません': "You can't move right now", 'あなたの番ではありません': "It's not your turn", 'その手は指せません': "That move isn't allowed",
   '今は投了できません': "You can't resign right now", '座っている人だけが投了できます': 'Only seated players can resign', 'もう脱落しています': 'Already eliminated', '対局が終わってからです': 'Only after the game ends', '座っている人だけが押せます': 'Only seated players can press this', '満員です': 'The room is full' };
 
@@ -54,6 +54,9 @@ function onMsg(m) {
   if (!m.room) return;
   const before = RV;
   RV = m.room; rvAt = Date.now();
+  // 部屋を作ったばかりなら、そのまま始める（2026-10-25。CPU と指しながら待つ。来た人は CPU の席と交代して入れる）
+  { let g = null; try { g = sessionStorage.getItem('sg-go'); } catch (e) {}
+    if (g && g === RV.id) { try { sessionStorage.removeItem('sg-go'); } catch (e) {} if (RV.you === 0 && RV.phase === 'lobby' && RV.seats.filter((s) => !s.empty).length === 1) send({ t: 'start' }); } }
   if (RV.game !== lastGame && RV.phase === 'playing') { lastGame = RV.game; resultShown = false; }
   takeState();
   if (before && before.state && RV.state && RV.state.moves > before.state.moves) sound();
@@ -306,6 +309,12 @@ function renderInvite(can) {
   on('copy2', () => { const i = $('inv2'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast(L('コピーしました', 'Copied')), () => { document.execCommand('copy'); toast(L('コピーしました', 'Copied')); }); });
 }
 
+const roomWait = () => RV.seats.filter((s, i) => i > 0 && !s.empty && s.online && !s.ready).length;
+function readyBtnHTML(id) {
+  const me = RV.seats[RV.you];
+  return me.ready ? `<button class="btn" id="${id}" type="button">${L('準備OK ✓（取り消す）', 'Ready ✓ (undo)')}</button><p class="note">${L(`${esc(RV.seats[0].name)} さんが始めるのを待っています`, `Waiting for ${esc(RV.seats[0].name)} to start`)}</p>`
+    : `<button class="btn primary" id="${id}" type="button">${L('準備OK！', 'Ready!')}</button>`;
+}
 function renderLobby(show) {
   const el = $('lobby');
   if (!show) { el.hidden = true; lobbyHTML = ''; return; }
@@ -313,7 +322,7 @@ function renderLobby(show) {
   if (!RV) h = `<h2>${roomErr ? L('部屋が見つかりません', 'Room not found') : L('部屋につないでいます…', 'Connecting to the room…')}</h2>${roomErr ? `<p class="note">${esc(roomErr)}</p><a class="btn primary" href="room.html">${L('部屋の一覧へ', 'Room list')}</a>` : ''}`;
   else {
     const url = location.origin + location.pathname + '?room=' + RV.id, you = RV.you, lobby = RV.phase === 'lobby', host = you === 0;
-    const seats = RV.seats.map((s, i) => `<div class="seat"><span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span><span class="nm${s.empty ? ' empty' : ''}">${COLOR[i]}${L('：', ': ')}${s.empty ? (lobby ? L('あき（始めたらCPU）', 'Open (CPU once started)') : 'CPU') : esc(s.name) + (i === you ? L('（あなた）', ' (you)') : '')}</span><span class="on${s.online ? ' y' : ''}">${s.empty ? (lobby ? `<span class="waiting">${L('待っています…', 'waiting…')}</span>` : '') : s.online ? L('● いる', '● here') : L('るす', 'away')}</span></div>`).join('');
+    const seats = RV.seats.map((s, i) => `<div class="seat"><span class="dot" style="--c:${PCOL[i]};background:${PCOL[i]}"></span><span class="nm${s.empty ? ' empty' : ''}">${COLOR[i]}${L('：', ': ')}${s.empty ? (lobby ? L('あき（始めたらCPU）', 'Open (CPU once started)') : 'CPU') : esc(s.name) + (i === you ? L('（あなた）', ' (you)') : '')}</span><span class="on${s.online ? ' y' : ''}">${s.empty ? (lobby ? `<span class="waiting">${L('待っています…', 'waiting…')}</span>` : '') : !s.online ? L('るす', 'away') : i === 0 ? L('● いる', '● here') : s.ready ? L('✓ 準備OK', '✓ Ready') : L('準備中…', 'Not ready')}</span></div>`).join('');
     const nameBox = `<label>${L('あなたの名前', 'Your name')}<input id="myName" maxlength="8" placeholder="${L('なまえ', 'name')}" value="${esc(you >= 0 ? RV.seats[you].name : myName())}"></label>`;
     const ruleRow = `<label>${L('取った駒', 'Captured pieces')}${host ? '' : L('（部屋を作った人が決めます）', ' (the host decides)')}<div class="choices">${RULES.map(([k, n, d]) => `<button type="button" data-rule="${k}" class="${RV.rule === k ? 'on' : ''}"${host ? '' : ' disabled'}>${n}<small>${d}</small></button>`).join('')}</div></label>`;
     const limitRow = `<label>${L('1手の持ち時間', 'Time per move')}${host ? '' : L('（部屋を作った人が決めます）', ' (the host decides)')}<div class="choices">${LIMITS.map((t) => `<button type="button" data-sec="${t}" class="${RV.limit === t ? 'on' : ''}"${host ? '' : ' disabled'}>${t < 60 ? t + L('秒', 's') : t / 60 + L('分', ' min')}</button>`).join('')}</div></label>`;
@@ -324,8 +333,8 @@ function renderLobby(show) {
         <div class="btnrow">${EN ? '' : `<a class="btn" href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">LINEで送る</a>`}<a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${L('Xで呼ぶ', 'Invite on X')}</a></div>
         <p class="note">${L('② 友達がリンクを開いて「参加する」を押すと、上に名前が出ます', '② When a friend opens the link and presses "Join", their name appears above')}</p>` + ruleRow + limitRow
         + (host ? `<label class="check"><input type="checkbox" id="listed"${RV.listed ? ' checked' : ''}>${L('部屋の一覧に出す（だれでも参加できる）', 'List in the room list (anyone can join)')}</label>
-            <button class="btn primary" id="go" type="button">${L('③ はじめる', '③ Start')}</button><p class="note">${L('そろわなくても始められます。空いた席にはCPUが入ります。先手は青です', 'You can start without a full room. Empty seats get the CPU. Blue moves first')}</p>`
-          : `<p class="note">${L(`③ ${esc(RV.seats[0].name)} さんが「はじめる」を押すのを待っています`, `③ Waiting for ${esc(RV.seats[0].name)} to press "Start"`)}</p>`);
+            <button class="btn primary" id="go" type="button"${roomWait() ? ' disabled' : ''}>${L('③ はじめる', '③ Start')}</button>${roomWait() ? `<p class="note">${L(`みんなの「準備OK」を待っています（あと${roomWait()}人）`, `Waiting for everyone to be ready (${roomWait()} left)`)}</p>` : ''}<p class="note">${L('そろわなくても始められます。空いた席にはCPUが入ります。先手は青です', 'You can start without a full room. Empty seats get the CPU. Blue moves first')}</p>`
+          : readyBtnHTML('readyL'));
     } else if (RV.seats.some((s) => s.empty)) {
       body = lobby
         ? `<p class="note">${L(`${esc(RV.seats.find((s) => !s.empty)?.name || 'だれか')} さんの部屋に招待されました`, `You've been invited to ${esc(RV.seats.find((s) => !s.empty)?.name || 'someone')}'s room`)}</p>` + nameBox + `<button class="btn primary" id="join" type="button">${L('参加する', 'Join')}</button>`
@@ -352,6 +361,7 @@ function renderLobby(show) {
   on('copy', () => { const i = $('inv'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).then(() => toast(L('コピーしました', 'Copied')), () => { document.execCommand('copy'); toast(L('コピーしました', 'Copied')); }); });
   on('go', () => { gtag('event', 'shogi_room_start', { seated: RV.seats.filter((s) => !s.empty).length }); send({ t: 'start' }); });
   on('watch', () => { watching = true; draw(); });
+  on('readyL', () => send({ t: 'ready', on: !RV.seats[RV.you].ready }));
   on('join', () => { const v = ($('myName').value || '').trim() || L('ゲスト', 'Guest'); saveName(v); gtag('event', 'shogi_room_join'); send({ t: 'join', name: v }); });
   el.querySelectorAll('button[data-rule]').forEach((b) => b.addEventListener('click', () => send({ t: 'rule', rule: b.dataset.rule })));
   el.querySelectorAll('button[data-sec]').forEach((b) => b.addEventListener('click', () => send({ t: 'limit', sec: +b.dataset.sec })));
@@ -362,15 +372,16 @@ function renderLobby(show) {
 const WIN_TYPE = EN ? { king: 'Won by capturing the king', try: 'Won by king entry', limit: 'Decided at 500 moves by total piece value' } : { king: '玉を取って決着', try: '入玉で決着', limit: '500手で、駒の価値の合計で決着' };
 function renderResult() {
   const st = RV.state, el = $('result'), you = RV.you, n = RV.seats.filter((s) => !s.empty).length;
-  const meSeat = RV.seats[you], k = RV.seats.filter((s) => s.voted).length;
+  const meSeat = RV.seats[you], w = meSeat ? roomWait() : 0;
   const resigned = st.log.some((x) => x.resign) && st.winType === 'king';
   const rows = (RV.ranking || []).map((p, r) => `<div class="seat"><b>${L(`${r + 1}位`, ['1st', '2nd', '3rd'][r])}</b><span class="dot" style="--c:${PCOL[p]};background:${PCOL[p]}"></span><span class="nm">${esc(seatName(p))}</span><span class="on">${L(`${RV.wins[p]}勝`, `${RV.wins[p]} ${RV.wins[p] === 1 ? 'win' : 'wins'}`)}</span></div>`).join('');
-  const againBtn = !meSeat ? '' : meSeat.voted ? `<button class="btn primary" type="button" disabled>${L('みんなを待っています', 'Waiting for everyone')}（${k}/${n}）</button>`
-    : `<button class="btn primary" type="button" id="again">${n > 1 ? L(`この${n}人でもう一局`, `Play again with these ${n}`) : L('もう一局', 'Play again')}${k ? `（${k}/${n}）` : ''}</button>`;
+  const againBtn = !meSeat ? '' : you === 0 ? `<button class="btn primary" type="button" id="again"${w ? ' disabled' : ''}>${n > 1 ? L(`この${n}人でもう一局`, `Play again with these ${n}`) : L('もう一局', 'Play again')}</button>${w ? `<p class="note">${L(`みんなの「準備OK」を待っています（あと${w}人）`, `Waiting for everyone to be ready (${w} left)`)}</p>` : ''}`
+    : readyBtnHTML('readyR');
   el.innerHTML = `<div class="big" style="color:${PCOL[st.winner]}">${L(esc(seatName(st.winner)) + ' の勝ち！', esc(seatName(st.winner)) + ' wins!')}</div>
     <p class="note" style="text-align:center">${resigned ? L('投了と玉取りで決着', 'Decided by resignation and king capture') : WIN_TYPE[st.winType] || ''}${L(`・${st.moves}手`, ` · ${st.moves} moves`)}</p>
     <div class="rank">${rows}</div><div class="btnrow">${againBtn}<button class="btn" type="button" id="review">${L('この対局を検討する', 'Review this game')}</button>${you >= 0 ? `<button class="btn" type="button" id="shareX">${L('結果をXでシェア', 'Share your result on X')}</button>` : ''}</div>`;
   on('again', () => send({ t: 'again' }));
+  on('readyR', () => send({ t: 'ready', on: !RV.seats[RV.you].ready }));
   on('review', openReview);
   on('shareX', () => Share.postRoom(st, (RV.ranking || []).indexOf(you) + 1, you));
   if (!resultShown) { resultShown = true; gtag('event', 'shogi_room_over', { win: st.winType, moves: st.moves }); }
@@ -435,6 +446,7 @@ async function makeRoom() {
   try {
     const r = await fetch(API + '/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pid: me(), name: myName() || L('ゲスト', 'Guest'), kind: 'shogi3' }) });
     const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    try { sessionStorage.setItem('sg-go', j.id); } catch (e) {}
     location.href = '?room=' + j.id;
   } catch (e) { toast(L('部屋を作れませんでした。少し時間をおいて、もう一度ためしてください', "Couldn't make a room. Please wait a bit and try again")); }
 }
