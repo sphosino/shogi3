@@ -71,8 +71,9 @@ fn read_f32(b: &[u8], i: usize) -> f32 {
 // ── 席ごとのプレイヤー ──
 
 enum Seat {
-    /// ネット（番号でモデルを区別。評価対局で新旧のネットを戦わせるため）
-    Net(u8),
+    /// ネット（番号でモデルを区別。評価対局で新旧のネットを戦わせるため）。
+    /// 2つ目は全力探索の訪問数（"net:0:800"。0なら visits_full。読む回数の違いで強さを比べるため）
+    Net(u8, u32),
     /// ネット以外（足場のMCTS・駒得優先・ランダム）。Rust内で即座に指す
     Internal(Box<dyn Agent>),
 }
@@ -81,7 +82,7 @@ fn make_seat(spec: &str, seed: u64) -> PyResult<Seat> {
     let parts: Vec<&str> = spec.split(':').collect();
     let num = |i: usize, d: u32| parts.get(i).and_then(|s| s.parse::<u32>().ok()).unwrap_or(d);
     Ok(match parts[0] {
-        "net" => Seat::Net(num(1, 0) as u8),
+        "net" => Seat::Net(num(1, 0) as u8, num(2, 0)),
         "scaffold" | "mcts" => Seat::Internal(Box::new(MctsAgent::material(num(1, 400), seed))),
         "greedy" => Seat::Internal(Box::new(GreedyAgent::new(seed))),
         "random" => Seat::Internal(Box::new(RandomAgent::new(seed))),
@@ -292,6 +293,11 @@ impl Driver {
             if g.search.is_none() {
                 g.full = cfg.full_prob >= 1.0 || g.rng.unit() < cfg.full_prob;
                 g.target = if g.full { cfg.visits_full } else { cfg.visits_fast };
+                if let Seat::Net(_, v) = g.seats[turn] {
+                    if g.full && v > 0 {
+                        g.target = v;
+                    }
+                }
                 let mut sc = cfg.search.clone();
                 if !g.full {
                     sc.dirichlet_total = 0.0;
@@ -329,7 +335,7 @@ impl Driver {
         let s = g.search.take().unwrap();
         let mv = if g.pos.move_count < cfg.temp_plies { s.sample_move(1.0, &mut g.rng) } else { s.best_move() };
         // 学習データは現世代（ネット0番）の手番だけ残す（過去の世代の手を方策の手本にしない）
-        let mine = matches!(g.seats[g.pos.turn as usize], Seat::Net(0));
+        let mine = matches!(g.seats[g.pos.turn as usize], Seat::Net(0, _));
         if g.record && mv != PASS && mine {
             let mut state = Vec::with_capacity(STATE_BYTES);
             encode_state(&g.pos, &mut state);
@@ -516,7 +522,7 @@ impl Driver {
                 });
             }
             model.push(match &g.seats[g.pos.turn as usize] {
-                Seat::Net(n) => *n,
+                Seat::Net(n, _) => *n,
                 _ => 0,
             });
         }
@@ -586,7 +592,7 @@ impl Driver {
             g_start.push(g.start_ply);
             for s in &g.seats {
                 g_seat_net.push(match s {
-                    Seat::Net(n) => *n as i8,
+                    Seat::Net(n, _) => *n as i8,
                     Seat::Internal(_) => -1,
                 });
             }

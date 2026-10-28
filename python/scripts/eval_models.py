@@ -3,6 +3,7 @@
 使い方（リポジトリ直下）:
   python/.venv/Scripts/python.exe python/scripts/eval_models.py --run p4 --gen 11 --vs scaffold:200 gen:1
 相手: scaffold:訪問数 / greedy / random / gen:世代 / ext:実行名:世代（別の実行のモデル）
+読む回数の違いを測る: --me-visits 800 --visits 200 --vs gen:250（同じ世代で、測る側だけ800回読む）
 """
 import argparse
 import json
@@ -25,6 +26,7 @@ def main():
     p.add_argument("--vs", nargs="+", required=True)
     p.add_argument("--games", type=int, default=60)
     p.add_argument("--visits", type=int, default=200)
+    p.add_argument("--me-visits", type=int, default=0, help="測る側だけの訪問数（0なら --visits と同じ）")
     p.add_argument("--seed", type=int, default=101)
     p.add_argument("--rule", default="all", choices=["all", "next", "vanish", "mix"])
     p.add_argument("--save-games", action="store_true", help="対局データを runs/<run>/eval_games/ に保存（analyze_eval.py 用）")
@@ -33,6 +35,7 @@ def main():
     dev = torch.device("cuda")
     load = lambda g: M.load(os.path.join(root, "models", f"gen{g:04d}.pt"), dev).eval()
     me = load(a.gen)
+    me_seat = f"net:0:{a.me_visits}" if a.me_visits else "net:0"
 
     def save_path(opp):
         if not a.save_games:
@@ -41,15 +44,15 @@ def main():
         return os.path.join(root, "eval_games", f"gen{a.gen}_vs_{opp.replace(':', '-')}_{a.rule}_s{a.seed}.npz")
     for opp in a.vs:
         if opp.startswith("gen:"):
-            r = evaluate({0: me, 1: load(int(opp[4:]))}, ["net:0", "net:1", "net:1"], a.games, a.visits, dev, a.seed, a.rule, save_path(opp))
+            r = evaluate({0: me, 1: load(int(opp[4:]))}, [me_seat, "net:1", "net:1"], a.games, a.visits, dev, a.seed, a.rule, save_path(opp))
         elif opp.startswith("ext:"):  # 別の実行のモデル（例 ext:p4:51）
             _, run2, g2 = opp.split(":")
             other = M.load(os.path.join(root, "..", run2, "models", f"gen{int(g2):04d}.pt"), dev).eval()
-            r = evaluate({0: me, 1: other}, ["net:0", "net:1", "net:1"], a.games, a.visits, dev, a.seed, a.rule, save_path(opp))
+            r = evaluate({0: me, 1: other}, [me_seat, "net:1", "net:1"], a.games, a.visits, dev, a.seed, a.rule, save_path(opp))
         else:
-            r = evaluate({0: me}, ["net:0", opp, opp], a.games, a.visits, dev, a.seed, a.rule, save_path(opp))
-        r.update(gen=a.gen, opponent=opp, rule=a.rule)
-        print(f"世代{a.gen} vs {opp}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 終局{r['end']} {r['sec']}秒 席別(青赤緑) {r['by_seat']}" + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""), flush=True)
+            r = evaluate({0: me}, [me_seat, opp, opp], a.games, a.visits, dev, a.seed, a.rule, save_path(opp))
+        r.update(gen=a.gen, opponent=opp, rule=a.rule, visits=a.visits, me_visits=a.me_visits or a.visits)
+        print(f"世代{a.gen}" + (f"（{a.me_visits}回）" if a.me_visits else "") + f" vs {opp}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 終局{r['end']} {r['sec']}秒 席別(青赤緑) {r['by_seat']}" + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""), flush=True)
         with open(os.path.join(root, "eval_extra.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(r, ensure_ascii=False) + chr(10))
 
