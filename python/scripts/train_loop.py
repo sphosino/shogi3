@@ -240,12 +240,12 @@ def main():
         if files:
             starts = np.concatenate([lead_states(D.load_shard(f), a.lead_min) for f in files])
         log(f"大差局面（{a.lead_min}枚以上リード）の候補 {len(starts)}局面（世代{a.lead_from}以降の自己対局 {len(files)}シャードから）")
-        # 人の対局から取り出した局面（add_start_positions.py）も足す
+        # 追加の局面も足す：人の対局から取り出した局面（add_start_positions.py）、成り駒だらけの局面（make_promo_positions.py）
         extra = sorted(glob.glob(os.path.join(root, "start_positions", "*.npy")))
         if extra:
             ex = np.concatenate([np.load(f) for f in extra])
             starts = np.concatenate([starts, ex])
-            log(f"  人の対局から {len(ex)}局面（{len(extra)}ファイル）→ {len(starts)}局面")
+            log(f"  追加の局面（人の対局・成り駒だらけ。start_positions/）から {len(ex)}局面（{len(extra)}ファイル）→ {len(starts)}局面")
     for _ in range(a.gens):
         # 学習率：蒸留直後の数世代は低く（--lr-warm）
         warm = a.lr_warm is not None and gen < a.lr_warm_gens + 1
