@@ -260,7 +260,13 @@ function rvUpdatePanel() {
   const hk = b !== null ? Math.min(k, b) : k;
   document.querySelectorAll('#kifu-list > div').forEach((d, i) => d.classList.toggle('review-cur', i === hk - 1));
   const cur = document.querySelector('#kifu-list > div.review-cur');
-  if (cur) cur.scrollIntoView({ block: 'nearest' });
+  // 棋譜の欄の中だけをスクロールする（scrollIntoView だとページごと動いて、盤が画面から消える）
+  const kl = rvEl('kifu-list');
+  if (cur && kl) {
+    const c = cur.getBoundingClientRect(), l = kl.getBoundingClientRect();
+    if (c.top < l.top) kl.scrollTop += c.top - l.top;
+    else if (c.bottom > l.bottom) kl.scrollTop += c.bottom - l.bottom;
+  }
   // 変化の手順
   const vEl = rvEl('review-var');
   if (b !== null) {
