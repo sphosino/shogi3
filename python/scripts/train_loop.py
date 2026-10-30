@@ -60,7 +60,7 @@ def parse():
     p.add_argument("--rand-min", type=int, default=40, help="ランダム局面：最初にランダムに指す手数の最小")
     p.add_argument("--rand-max", type=int, default=100, help="ランダム局面：最初にランダムに指す手数の最大")
     p.add_argument("--rand-seed-games", type=int, default=0, help="ランダム局面の山が空なら、最初にこの局数をまとめて作る")
-    p.add_argument("--lead-share", type=float, default=0.0, help="学習バッチのうち「大差局面から」の山の割合（自己対局で大差がついた実際の局面から指し直した対局）")
+    p.add_argument("--lead-share", type=float, default=0.0, help="学習バッチのうち「特別な局面から」の山の割合（大差局面・start_positions/ の局面から指し直した対局）")
     p.add_argument("--lead-min", type=int, default=12, help="大差局面：3人とも生きていて、トップが2位より駒数（盤上の玉以外＋持ち駒）でこの枚数以上多い局面")
     p.add_argument("--lead-from", type=int, default=182, help="大差局面を集める自己対局のシャード：この世代から（それより前は記録の形が違う）")
     p.add_argument("--mix-past-weight", type=float, default=0.5, help="他のモデル入りの対局のうち、過去の世代の割合（残りは弱いモデル）")
@@ -178,7 +178,7 @@ def main():
     mix_dir = os.path.join(root, "selfplay_mix")   # 他のモデル入りの対局（--mix-share）
     adj_dir = os.path.join(root, "selfplay_adj")   # 調整局面の対局（--adj-share）
     rand_dir = os.path.join(root, "selfplay_rand")  # ランダム局面から始めた対局（--rand-share）
-    lead_dir = os.path.join(root, "selfplay_lead")  # 大差局面から指し直した対局（--lead-share）
+    lead_dir = os.path.join(root, "selfplay_lead")  # 特別な局面（大差局面・start_positions/）から指し直した対局（--lead-share）
     model_path = lambda g: os.path.join(root, "models", f"gen{g:04d}.pt")
 
     # 別のルール・実行で学習したモデルから始める：それを世代1として保存し、その自己対局を最初のデータにする
@@ -233,19 +233,19 @@ def main():
         D.save_shard(os.path.join(rand_dir, f"gen{gen:04d}.npz"), dr)
         log(f"ランダム局面から {a.rand_seed_games}局をまとめて作成 {time.time()-t:.0f}秒（最初のランダムな手 平均{dr['g_rand'].mean():.0f}手）"
             f" 局面 {len(dr['winner'])} {json.dumps(summarize_games(dr), ensure_ascii=False)}")
-    # 大差局面の候補：これまでの「自己対局のみ」のシャードから集める（駒はいじらない、実際の局面）。新しい世代の分は毎世代足す
+    # 特別な局面の候補。大差局面：これまでの「自己対局のみ」のシャードから集める（駒はいじらない、実際の局面）。新しい世代の分は毎世代足す
     starts = np.zeros((0, 109), dtype=np.uint8)
     if a.lead_share > 0:
         files = [f for f in glob.glob(os.path.join(shard_dir, "gen*.npz")) if int(os.path.basename(f)[3:7]) >= a.lead_from]
         if files:
             starts = np.concatenate([lead_states(D.load_shard(f), a.lead_min) for f in files])
         log(f"大差局面（{a.lead_min}枚以上リード）の候補 {len(starts)}局面（世代{a.lead_from}以降の自己対局 {len(files)}シャードから）")
-        # 追加の局面も足す：人の対局から取り出した局面（add_start_positions.py）、成り駒だらけの局面（make_promo_positions.py）
+        # 追加の局面も足す：人の対局（add_start_positions.py、fetch_human_kifu.py）、成り駒だらけ（make_promo_positions.py）、二人将棋（make_twoplayer_positions.py）
         extra = sorted(glob.glob(os.path.join(root, "start_positions", "*.npy")))
         if extra:
             ex = np.concatenate([np.load(f) for f in extra])
             starts = np.concatenate([starts, ex])
-            log(f"  追加の局面（人の対局・成り駒だらけ。start_positions/）から {len(ex)}局面（{len(extra)}ファイル）→ {len(starts)}局面")
+            log(f"  追加の局面（人の対局・成り駒だらけ・二人将棋。start_positions/）から {len(ex)}局面（{len(extra)}ファイル）→ {len(starts)}局面")
     for _ in range(a.gens):
         # 学習率：蒸留直後の数世代は低く（--lr-warm）
         warm = a.lr_warm is not None and gen < a.lr_warm_gens + 1
@@ -261,7 +261,7 @@ def main():
                                  ("他のモデル入り", D.Window(mix_dir, int(a.window * a.mix_share / pure_r)), a.mix_share),
                                  ("調整局面", D.Window(adj_dir, int(a.window * a.adj_share / pure_r)), a.adj_share),
                                  ("ランダム局面から", D.Window(rand_dir, int(a.window * a.rand_share / pure_r)), a.rand_share),
-                                 ("大差局面から", D.Window(lead_dir, int(a.window * a.lead_share / pure_r)), a.lead_share)])
+                                 ("特別な局面から", D.Window(lead_dir, int(a.window * a.lead_share / pure_r)), a.lead_share)])
         else:
             win = D.Window(shard_dir, a.window)
         newest = max(glob.glob(os.path.join(shard_dir, "*.npz")), key=os.path.getmtime)
@@ -341,7 +341,7 @@ def main():
             if is_lead.any():
                 dl = D.subset_games(dall, is_lead)
                 D.save_shard(os.path.join(lead_dir, f"gen{gen:04d}.npz"), dl)
-                log(f"  大差局面から {int(is_lead.sum())}局（始めた手数 平均{dl['g_start'].mean():.0f}手目） 局面 {len(dl['winner'])} {json.dumps(summarize_games(dl), ensure_ascii=False)}")
+                log(f"  特別な局面から {int(is_lead.sum())}局（始めた手数 平均{dl['g_start'].mean():.0f}手目） 局面 {len(dl['winner'])} {json.dumps(summarize_games(dl), ensure_ascii=False)}")
             if a.lead_share > 0:
                 new = lead_states(d, a.lead_min)
                 starts = np.concatenate([starts, new])

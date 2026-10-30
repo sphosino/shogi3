@@ -1,6 +1,6 @@
 """人の対局の棋譜（ブラウザの「📋 棋譜をコピー」の JSON）から、自己対局を始める局面を取り出して保存する。
 
-保存した局面は、train_loop.py の「大差局面から」の山（--lead-share）の候補に足される（runs/<run>/start_positions/*.npy）。
+保存した局面は、train_loop.py の「特別な局面から」の山（--lead-share）の候補に足される（runs/<run>/start_positions/*.npy）。
 取り出すのは、3人とも生きていて、トップが2位より駒数で --lead-min 枚以上多くなった最初の局面から、誰かが脱落する直前までの局面。
 
   python/.venv/Scripts/python.exe python/scripts/add_start_positions.py --run pbig2 --name human-2026-10-13 棋譜.json

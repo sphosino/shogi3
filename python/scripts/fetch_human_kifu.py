@@ -4,7 +4,7 @@
 勝ち負けは使わない。人が最初に指したあとの局面を、3人とも生きている間だけ取り出す（棋譜は人が脱落したところで終わっている）。
 
   1. 新しく増えた棋譜を取ってきて runs/human_kifu/kifu.jsonl に足す（同じ id は新しいほうで上書き。続きは runs/human_kifu/cursor.txt から）
-  2. 全部の棋譜を並べ直して、局面を runs/<run>/start_positions/human-server.npy に書く（train_loop.py の「大差局面から」の山の候補に足される）
+  2. 全部の棋譜を並べ直して、局面を runs/<run>/start_positions/human-server.npy に書く（train_loop.py の「特別な局面から」の山の候補に足される）
 
 取ってくるには KIFU_TOKEN（サーバーに wrangler secret put KIFU_TOKEN で設定したもの）を runs/kifu-token.txt に置いておく。
 

@@ -7,7 +7,7 @@
   - そこからランダムに --rand-min〜--rand-max 手指した局面（序盤のいろいろな形）
 取り駒ルールは「全部持ち駒」（ふつうの将棋と同じ）。
 
-作った局面は runs/<run>/start_positions/ に置くと、train_loop.py の「大差局面から」の山（--lead-share）の候補に足される。
+作った局面は runs/<run>/start_positions/ に置くと、train_loop.py の「特別な局面から」の山（--lead-share）の候補に足される。
 
 使い方（リポジトリ直下）:
   python/.venv/Scripts/python.exe python/scripts/make_twoplayer_positions.py --n-init 3000 --n-rand 3000 --out runs/pbig2/start_positions/twoplayer-2026-10-31.npy
