@@ -12,4 +12,5 @@ web/models/*
 !web/models/pbig2-gen240.onnx
 !web/models/pbig2-gen250.onnx
 !web/models/pbig2-gen266.onnx
+!web/models/pbig2-gen296.onnx
 runs_*.err

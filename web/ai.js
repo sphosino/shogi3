@@ -8,9 +8,9 @@
   const RULE_ID = { all: 0, next: 1, vanish: 2 };
   const ruleName = (v) => (v === true || v === "all") ? "all" : v === "next" ? "next" : (v === false || v === "vanish") ? "vanish" : "all";
 
-  // 使う重み。ページの URL に ?model=pbig2-gen250 のように付けると、web/models/ の別の重みを使う（手元で試すとき）
+  // 使う重み。ページの URL に ?model=pbig2-gen266 のように付けると、web/models/ の別の重みを使う（手元で試すとき）
   const q = new URLSearchParams(global.location ? global.location.search : "").get("model");
-  const DEFAULT_MODEL = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen266.onnx";
+  const DEFAULT_MODEL = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen296.onnx";
 
   const LocalAI = {
     ready: false,
@@ -43,7 +43,7 @@
         } catch (e) { lastErr = e; }
       }
       if (!this.sess) throw lastErr || new Error("ネットを読み込めませんでした");
-      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen266
+      this.model = o.model.split("/").pop().replace(/\.onnx$/, "");  // 例: pbig2-gen296
       if (this.provider === "wasm") { this.visits = o.cpuVisits || 200; this.batch = 4; }
       else { this.visits = o.visits || 800; this.batch = 16; }
       // 準備運転：最初の推論は GPU の準備で遅いので、ここで済ませておく（1手目だけ読みが浅くならないように）

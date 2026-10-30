@@ -9,9 +9,11 @@
 
 ![学習AIの成長曲線](docs/growth.svg)
 
-駒価値だけで読む足場（0）から、今の最強（pbig2 世代266、約2,350）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。AIの対局から分かった三人将棋の戦い方（賭けの捨て駒、リードしても勝てない、席の有利不利）は [docs/findings.md](docs/findings.md)。
+駒価値だけで読む足場（0）から、今の最強（pbig2 世代296、約2,400）まで、直接対戦の勝率から積み上げた推定の強さ。詳しくは [docs/results.md](docs/results.md)。AIの対局から分かった三人将棋の戦い方（賭けの捨て駒、リードしても勝てない、席の有利不利）は [docs/findings.md](docs/findings.md)。
 
 **v1.2（2026-10-29）**：v1.1（世代240）で一度止めたが、学習率を 0.0007 → 0.0003 に下げて再開したら、また伸びた（世代266、世代250 に39.9%）。読む回数を増やすと大きく強くなる（200回の自分に、400回で61%、800回で78%）ので、ネットの直感にはまだ伸びしろがある（[docs/results.md](docs/results.md)）。
+
+**v1.3（2026-10-30）**：同じ学習率で30世代続けた。途中から成り駒だらけの局面（成り駒6〜12枚、全部成った初期局面など）を学習に混ぜ、人の対局で成り駒が増えても崩れにくくした。世代296 は世代266 に39.3%。
 
 **作者はもう世代266に勝てなくなりました。** v1.0（世代224）のころは人が勝つこともありましたが、世代266とは何局指しても勝てません（2026-10-29）。
 
@@ -30,11 +32,11 @@
 
 ### 学習AIと対局する
 
-学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（最新は v1.2 の `shogi3-pbig2-gen266.pt`）。
+学習したネットはGPUで動かすので、ローカルのサーバーを起動してから開く。学習済みの重みは [Releases](https://github.com/sphosino/shogi3/releases) からダウンロードできる（最新は v1.3 の `shogi3-pbig2-gen296.pt`）。
 
 ```
-python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen266.pt   # ダウンロードした重み
-python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 266           # 自分で学習した runs/ の重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --model shogi3-pbig2-gen296.pt   # ダウンロードした重み
+python/.venv/Scripts/python.exe python/scripts/play_server.py --run pbig2 --gen 296           # 自分で学習した runs/ の重み
 ```
 
 `http://localhost:8765/shogi3.html` を開き、難易度で **🧠 学習AI** を選ぶ。選んだ時間いっぱい探索する。F12のコンソールに、AIが指すたびに3人の勝率予想が出る。
