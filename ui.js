@@ -484,13 +484,13 @@ function setTwoPlayerPreset(){
   // P0（下・青）通常将棋の後手配置
   [[8,0,'KY'],[8,1,'KE'],[8,2,'GIN'],[8,3,'KIN'],[8,4,'OU'],
    [8,5,'KIN'],[8,6,'GIN'],[8,7,'KE'],[8,8,'KY'],
-   [7,1,'HI'],[7,7,'KAKU']].forEach(([r,c,p])=>board[r][c]={p,o:0,pr:false});
+   [7,1,'KAKU'],[7,7,'HI']].forEach(([r,c,p])=>board[r][c]={p,o:0,pr:false});
   for(let c=0;c<=8;c++) board[6][c]={p:'FU',o:0,pr:false};
 
   // P1（上・赤）通常将棋の先手配置
   [[0,0,'KY'],[0,1,'KE'],[0,2,'GIN'],[0,3,'KIN'],[0,4,'OU'],
    [0,5,'KIN'],[0,6,'GIN'],[0,7,'KE'],[0,8,'KY'],
-   [1,7,'HI'],[1,1,'KAKU']].forEach(([r,c,p])=>board[r][c]={p,o:1,pr:false});
+   [1,1,'HI'],[1,7,'KAKU']].forEach(([r,c,p])=>board[r][c]={p,o:1,pr:false});
   for(let c=0;c<=8;c++) board[2][c]={p:'FU',o:1,pr:false};
 
   // P2(緑)をelim、青赤のelimを解除
