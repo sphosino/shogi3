@@ -2,6 +2,7 @@
 
 棋譜は mataasobo リポジトリの server/src/kifu.js がためている（ひとりで指す画面から送られたものと、みんなと指す部屋の対局）。
 勝ち負けは使わない。人が最初に指したあとの局面を、3人とも生きている間だけ取り出す（棋譜は人が脱落したところで終わっている）。
+二人将棋配置から指した棋譜（start: 'two'）は、緑が脱落した二人の局面を決着の直前まで取り出す（2026-10-31）。
 
   1. 新しく増えた棋譜を取ってきて runs/human_kifu/kifu.jsonl に足す（同じ id は新しいほうで上書き。続きは runs/human_kifu/cursor.txt から）
   2. 全部の棋譜を並べ直して、局面を runs/<run>/start_positions/human-server.npy に書く（train_loop.py の「特別な局面から」の山の候補に足される）
@@ -23,6 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import shogi3_rs  # noqa: E402
 from add_start_positions import RULES, policy_index  # noqa: E402
 from export_games import initial_bytes  # noqa: E402
+from make_twoplayer_positions import initial as twoplayer_initial  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 API = "https://api.mataasobo.com/kifu"
@@ -40,11 +42,16 @@ def fetch(token, after, api=API):
 
 
 def positions(rec):
-    """人が最初に指したあとの局面（3人とも生きている間）。並べ直せない手があれば、そこまで"""
-    st = initial_bytes(RULES[rec["rule"]])
+    """人が最初に指したあとの局面（3人とも生きている間。二人将棋は決着まで）。並べ直せない手があれば、そこまで"""
+    if rec.get("start") == "two":   # 二人将棋配置から（2026-10-31）
+        st = bytearray(twoplayer_initial(rec["turn"]))
+        st[108] = RULES[rec["rule"]]
+        st, alive = bytes(st), bytes([0, 0, 1])
+    else:
+        st, alive = initial_bytes(RULES[rec["rule"]]), bytes(3)
     humans, out, seen_human = set(rec["humans"]), [], False
     for m in rec["moves"]:
-        if st[102:105] != bytes(3):
+        if st[102:105] != alive:
             break
         if m.get("resign"):
             break
@@ -54,7 +61,7 @@ def positions(rec):
             break
         st = bytes(s2)
         seen_human = seen_human or m["o"] in humans
-        if seen_human and st[102:105] == bytes(3) and w is None:
+        if seen_human and st[102:105] == alive and w is None:
             out.append(st)
         if w is not None:
             break
@@ -89,17 +96,18 @@ def main():
             for r in recs.values():
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"新しく {len(items)}局（サーバーに全部で {total}局、手元に {len(recs)}局）")
-    rows, n_solo, n_room = [], 0, 0
+    rows, n_solo, n_room, n_two = [], 0, 0, 0
     for r in recs.values():
         x = positions(r)
         rows += x
         n_solo += r["src"] == "solo"
         n_room += r["src"] == "room"
+        n_two += r.get("start") == "two"
     arr = np.frombuffer(b"".join(rows), dtype=np.uint8).reshape(-1, 109) if rows else np.zeros((0, 109), dtype=np.uint8)
     out = os.path.join(ROOT, "runs", a.run, "start_positions", "human-server.npy")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     np.save(out, arr)
-    print(f"ひとりで指した {n_solo}局・部屋 {n_room}局 → {len(arr)}局面 → {os.path.relpath(out, ROOT)}")
+    print(f"ひとりで指した {n_solo}局（うち二人将棋 {n_two}局）・部屋 {n_room}局 → {len(arr)}局面 → {os.path.relpath(out, ROOT)}")
 
 
 if __name__ == "__main__":
