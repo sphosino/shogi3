@@ -62,6 +62,10 @@ def parse():
     p.add_argument("--rand-seed-games", type=int, default=0, help="ランダム局面の山が空なら、最初にこの局数をまとめて作る")
     p.add_argument("--lead-share", type=float, default=0.0, help="学習バッチのうち「特別な局面から」の山の割合（大差局面・start_positions/ の局面から指し直した対局）")
     p.add_argument("--lead-min", type=int, default=12, help="大差局面：3人とも生きていて、トップが2位より駒数（盤上の玉以外＋持ち駒）でこの枚数以上多い局面")
+    p.add_argument("--two-share", type=float, default=0.0, help="二人将棋（緑が脱落した start_positions/ の局面）から指す対局を別の山に分け、自己対局と学習でこの割合を使う。0なら二人将棋の局面は「特別な局面から」に混ぜる")
+    p.add_argument("--two-weights", type=float, nargs=3, default=[0.3, 0.4, 0.3], help="二人将棋の山の中身：初期配置・そこからランダムに指した局面・人の棋譜（human-*.npy）の割合")
+    p.add_argument("--eval-two-vs", nargs="*", default=[], help="二人将棋の評価の相手（gen:N）。初期配置から、青赤と先手を入れ替えて指す")
+    p.add_argument("--eval-two-games", type=int, default=200, help="二人将棋の評価の局数（4通りに等分）")
     p.add_argument("--lead-from", type=int, default=182, help="大差局面を集める自己対局のシャード：この世代から（それより前は記録の形が違う）")
     p.add_argument("--mix-past-weight", type=float, default=0.5, help="他のモデル入りの対局のうち、過去の世代の割合（残りは弱いモデル）")
     p.add_argument("--weak-models", nargs="*", default=[], help="自己対局に混ぜる弱いモデル（実行名:世代。例 pbig2:1 pmix:81）。1世代に1つを順番に使う")
@@ -156,11 +160,35 @@ def evaluate(models: dict, seats, games, visits, device, seed, rule="all", save=
     return out
 
 
+def evaluate_two(models: dict, games, visits, device, seed):
+    """二人将棋の初期配置から net:0 vs net:1。青赤・先手を入れ替えた4通りを games/4 局ずつ。互角は50%（引き分けは半分）"""
+    from make_twoplayer_positions import initial
+    n_each = max(1, games // 4)
+    wins, n, by, plies = 0.0, 0, [], []
+    t = time.time()
+    for me in (0, 1):
+        for turn in (0, 1):
+            seats = ["net:0", "net:1", "net:1"] if me == 0 else ["net:1", "net:0", "net:1"]
+            drv = shogi3_rs.Driver(parallel=n_each, total_games=n_each, seats=seats, record=False, full_prob=1.0, visits_full=visits,
+                                   dirichlet_total=0.0, temp_plies=8, seed=seed + me * 2 + turn, rule="all",
+                                   start_prob=1.0, start_states=[initial(turn)])
+            d = D.decode(run_driver(drv, models, device, {}))
+            w = d["g_winner"]
+            mw, ow = int((w == me).sum()), int((w == 1 - me).sum())
+            wins += mw + 0.5 * (len(w) - mw - ow)
+            n += len(w)
+            by.append(round(mw / len(w) * 100, 1))
+            plies += d["g_plies"].tolist()
+    p = wins / n
+    return dict(games=n, wins=wins, rate=round(p * 100, 1), z=round(float((p - 0.5) / np.sqrt(0.25 / n)), 2),
+                avg_plies=float(np.mean(plies)), sec=round(time.time() - t, 1), by_case=by)
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     a = parse()
     root = os.path.join(os.path.dirname(__file__), "..", "..", "runs", a.run)
-    for sub in ("models", "selfplay", "selfplay_mix", "selfplay_adj", "selfplay_rand", "selfplay_lead"):
+    for sub in ("models", "selfplay", "selfplay_mix", "selfplay_adj", "selfplay_rand", "selfplay_lead", "selfplay_two"):
         os.makedirs(os.path.join(root, sub), exist_ok=True)
     logf = open(os.path.join(root, "log.txt"), "a", encoding="utf-8")
 
@@ -179,6 +207,7 @@ def main():
     adj_dir = os.path.join(root, "selfplay_adj")   # 調整局面の対局（--adj-share）
     rand_dir = os.path.join(root, "selfplay_rand")  # ランダム局面から始めた対局（--rand-share）
     lead_dir = os.path.join(root, "selfplay_lead")  # 特別な局面（大差局面・start_positions/）から指し直した対局（--lead-share）
+    two_dir = os.path.join(root, "selfplay_two")    # 二人将棋の局面から指した対局（--two-share）
     model_path = lambda g: os.path.join(root, "models", f"gen{g:04d}.pt")
 
     # 別のルール・実行で学習したモデルから始める：それを世代1として保存し、その自己対局を最初のデータにする
@@ -235,6 +264,7 @@ def main():
             f" 局面 {len(dr['winner'])} {json.dumps(summarize_games(dr), ensure_ascii=False)}")
     # 特別な局面の候補。大差局面：これまでの「自己対局のみ」のシャードから集める（駒はいじらない、実際の局面）。新しい世代の分は毎世代足す
     starts = np.zeros((0, 109), dtype=np.uint8)
+    two_groups = []
     if a.lead_share > 0:
         files = [f for f in glob.glob(os.path.join(shard_dir, "gen*.npz")) if int(os.path.basename(f)[3:7]) >= a.lead_from]
         if files:
@@ -244,8 +274,29 @@ def main():
         extra = sorted(glob.glob(os.path.join(root, "start_positions", "*.npy")))
         if extra:
             ex = np.concatenate([np.load(f) for f in extra])
+            if a.two_share > 0:   # 二人将棋の局面は別の山へ。初期配置・ランダムに指した局面・人の棋譜に分ける
+                human = np.concatenate([np.full(len(np.load(f, mmap_mode="r")), os.path.basename(f).startswith("human")) for f in extra])
+                is2 = (ex[:, 102] == 0) & (ex[:, 103] == 0) & (ex[:, 104] == 1)
+                mc = ex[:, 106].astype(int) + ex[:, 107].astype(int) * 256
+                two_groups = [ex[is2 & (mc == 0) & ~human], ex[is2 & (mc > 0) & ~human], ex[is2 & human]]
+                ex = ex[~is2]
+                log(f"  二人将棋の局面：初期配置 {len(two_groups[0])}・ランダムに指した {len(two_groups[1])}・人の棋譜 {len(two_groups[2])}（割合 {a.two_weights}）")
             starts = np.concatenate([starts, ex])
             log(f"  追加の局面（人の対局・成り駒だらけ・二人将棋。start_positions/）から {len(ex)}局面（{len(extra)}ファイル）→ {len(starts)}局面")
+
+    def start_list():
+        """Driver に渡す始める局面。Driver は均等に選ぶので、山ごとの割合になるように引き直して並べる"""
+        if a.two_share <= 0:
+            return [bytes(s) for s in starts]
+        K = 20000
+        n3 = int(round(K * a.lead_share / (a.lead_share + a.two_share))) if len(starts) else 0
+        rows = [starts[rng.integers(0, len(starts), n3)]] if n3 else []
+        ws = [w if len(g) else 0.0 for w, g in zip(a.two_weights, two_groups)]
+        for w, g in zip(ws, two_groups):
+            if w > 0:
+                rows.append(g[rng.integers(0, len(g), int(round((K - n3) * w / sum(ws))))])
+        return [bytes(s) for s in np.concatenate(rows)]
+
     for _ in range(a.gens):
         # 学習率：蒸留直後の数世代は低く（--lr-warm）
         warm = a.lr_warm is not None and gen < a.lr_warm_gens + 1
@@ -254,14 +305,15 @@ def main():
         # 学習：ステップ数は、直近のシャード（新しく増えた局面）の数 × train_ratio ÷ バッチ
         # --mix-share / --adj-share を使うときは、自己対局のみ／他のモデル入り／調整局面 の3つのバッファから決めた比率で混ぜる
         t = time.time()
-        pools = a.mix_share > 0 or a.adj_share > 0 or a.rand_share > 0 or a.lead_share > 0
-        pure_r = 1 - a.mix_share - a.adj_share - a.rand_share - a.lead_share
+        pools = a.mix_share > 0 or a.adj_share > 0 or a.rand_share > 0 or a.lead_share > 0 or a.two_share > 0
+        pure_r = 1 - a.mix_share - a.adj_share - a.rand_share - a.lead_share - a.two_share
         if pools:
             win = D.MultiWindow([("自己対局のみ", D.Window(shard_dir, a.window), pure_r),
                                  ("他のモデル入り", D.Window(mix_dir, int(a.window * a.mix_share / pure_r)), a.mix_share),
                                  ("調整局面", D.Window(adj_dir, int(a.window * a.adj_share / pure_r)), a.adj_share),
                                  ("ランダム局面から", D.Window(rand_dir, int(a.window * a.rand_share / pure_r)), a.rand_share),
-                                 ("特別な局面から", D.Window(lead_dir, int(a.window * a.lead_share / pure_r)), a.lead_share)])
+                                 ("特別な局面から", D.Window(lead_dir, int(a.window * a.lead_share / pure_r)), a.lead_share)]
+                                + ([("二人将棋", D.Window(two_dir, int(a.window * a.two_share / pure_r)), a.two_share)] if a.two_share > 0 else []))
         else:
             win = D.Window(shard_dir, a.window)
         newest = max(glob.glob(os.path.join(shard_dir, "*.npz")), key=os.path.getmtime)
@@ -328,13 +380,19 @@ def main():
                                    visits_full=a.visits_full, visits_fast=a.visits_fast, full_prob=a.full_prob,
                                    seed=a.seed * 100000 + gen, rule=a.rule, alt_seats=alt, alt_prob=a.mix_share if alt else 0.0,
                                    rand_prob=a.rand_share, rand_min=a.rand_min, rand_max=a.rand_max,
-                                   start_prob=a.lead_share if len(starts) else 0.0, start_states=[bytes(s) for s in starts])
+                                   start_prob=(a.lead_share + a.two_share) if len(starts) else 0.0, start_states=start_list())
             stats = {}
             dall = D.decode(run_driver(drv, models, device, stats))
             is_mix = (dall["g_seat_net"] != 0).any(1)
             is_rand = dall["g_rand"] > 0
             is_lead = dall["g_start"] > 0
-            pure = ~is_mix & ~is_rand & ~is_lead
+            is_two = np.zeros_like(is_lead)
+            if a.two_share > 0 and is_lead.any():   # 始めた局面で緑が脱落していれば二人将棋
+                gids, first = np.unique(dall["game_id"], return_index=True)
+                green_out = dict(zip(gids.tolist(), dall["states"][first, 104].tolist()))
+                is_two = is_lead & np.array([green_out.get(int(g), 0) == 1 for g in dall["g_id"]], dtype=bool)
+                is_lead = is_lead & ~is_two
+            pure = ~is_mix & ~is_rand & ~is_lead & ~is_two
             d = D.subset_games(dall, pure)
             D.save_shard(os.path.join(shard_dir, f"gen{gen:04d}.npz"), d)
             log(f"  自己対局 {a.games_per_gen}局 {time.time()-t:.0f}秒 推論 {stats['evals_per_sec']:.0f}局面/秒 / 自己対局のみ {int(pure.sum())}局 {json.dumps(summarize_games(d), ensure_ascii=False)}")
@@ -342,6 +400,10 @@ def main():
                 dl = D.subset_games(dall, is_lead)
                 D.save_shard(os.path.join(lead_dir, f"gen{gen:04d}.npz"), dl)
                 log(f"  特別な局面から {int(is_lead.sum())}局（始めた手数 平均{dl['g_start'].mean():.0f}手目） 局面 {len(dl['winner'])} {json.dumps(summarize_games(dl), ensure_ascii=False)}")
+            if is_two.any():
+                dt = D.subset_games(dall, is_two)
+                D.save_shard(os.path.join(two_dir, f"gen{gen:04d}.npz"), dt)
+                log(f"  二人将棋 {int(is_two.sum())}局 局面 {len(dt['winner'])} 平均{dt['g_plies'].mean():.0f}手 青の勝ち {(dt['g_winner'] == 0).mean() * 100:.0f}%")
             if a.lead_share > 0:
                 new = lead_states(d, a.lead_min)
                 starts = np.concatenate([starts, new])
@@ -404,6 +466,14 @@ def main():
                 r.update(gen=gen, opponent=name)
                 log(f"  評価 世代{gen} vs {name}×2: {r['wins']}/{r['games']} = {r['rate']}% (z={r['z']}) 平均{r['avg_plies']:.0f}手 {r['sec']}秒"
                     + f" 席別(青赤緑) {r['by_seat']}" + (f" ルール別 {r['by_rule']}" if "by_rule" in r else ""))
+                with open(os.path.join(root, "eval.jsonl"), "a", encoding="utf-8") as f:
+                    f.write(json.dumps(r, ensure_ascii=False) + chr(10))
+            for opp in a.eval_two_vs:   # 二人将棋（互角は50%）
+                og = int(opp.split(":")[1])
+                r = evaluate_two({0: model, 1: M.load(model_path(og), device).eval()}, a.eval_two_games, a.eval_visits, device, 13 + gen)
+                r.update(gen=gen, opponent=f"gen{og}", two=True)
+                log(f"  評価（二人将棋） 世代{gen} vs 世代{og}: {r['rate']}%（{r['games']}局、z={r['z']}） 平均{r['avg_plies']:.0f}手 {r['sec']}秒"
+                    + f" 自分が青で青先手・赤先手、赤で青先手・赤先手 {r['by_case']}")
                 with open(os.path.join(root, "eval.jsonl"), "a", encoding="utf-8") as f:
                     f.write(json.dumps(r, ensure_ascii=False) + chr(10))
     log("終了")

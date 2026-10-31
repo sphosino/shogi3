@@ -10,7 +10,7 @@
 作った局面は runs/<run>/start_positions/ に置くと、train_loop.py の「特別な局面から」の山（--lead-share）の候補に足される。
 
 使い方（リポジトリ直下）:
-  python/.venv/Scripts/python.exe python/scripts/make_twoplayer_positions.py --n-init 3000 --n-rand 3000 --out runs/pbig2/start_positions/twoplayer-2026-10-31.npy
+  python/.venv/Scripts/python.exe python/scripts/make_twoplayer_positions.py --n-init 2000 --n-rand 8000 --out runs/pbig2/start_positions/twoplayer-2026-10-31b.npy
 """
 import argparse
 import os
@@ -48,7 +48,7 @@ def main():
     p.add_argument("--n-init", type=int, default=3000)
     p.add_argument("--n-rand", type=int, default=3000)
     p.add_argument("--rand-min", type=int, default=2)
-    p.add_argument("--rand-max", type=int, default=10)
+    p.add_argument("--rand-max", type=int, default=30)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--out", required=True)
     a = p.parse_args()
