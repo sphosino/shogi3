@@ -2,6 +2,7 @@
 
 保存した局面は、train_loop.py の「特別な局面から」の山（--lead-share）の候補に足される（runs/<run>/start_positions/*.npy）。
 取り出すのは、3人とも生きていて、トップが2位より駒数で --lead-min 枚以上多くなった最初の局面から、誰かが脱落する直前までの局面。
+二人将棋の棋譜（最初から1人脱落している）は、大差の条件なしで、初手から決着の直前までの全部の局面（2026-10-31）。
 
   python/.venv/Scripts/python.exe python/scripts/add_start_positions.py --run pbig2 --name human-2026-10-13 棋譜.json
 """
@@ -27,12 +28,26 @@ def policy_index(m):
     return ((m["fr"] * 9 + m["fc"]) * 2 + int(bool(m.get("pro")))) * 81 + m["tr"] * 9 + m["tc"]
 
 
+def start_bytes(start):
+    """棋譜の最初の盤面（持ち駒なしの初期局面）を109バイトにする"""
+    st = bytearray(109)
+    for r, row in enumerate(start["board"]):
+        for c, x in enumerate(row):
+            if x:
+                st[r * 9 + c] = 1 + x["o"] * 16 + P.index(x["p"])
+    st[102:105] = bytes(int(e) for e in start["eliminated"])
+    st[105] = start["turn"]
+    st[108] = RULES[start.get("rule", "all")]
+    return bytes(st)
+
+
 def positions(rec, lead_min):
-    """棋譜を並べ直して、大差がついてから脱落の直前までの局面（109バイトの行）を返す"""
-    st = initial_bytes(RULES[rec["start"].get("rule", "all")])
+    """棋譜を並べ直して、大差がついてから脱落の直前までの局面（109バイトの行）を返す。二人将棋は決着の直前までの全部"""
+    two = any(rec["start"]["eliminated"])
+    st = start_bytes(rec["start"]) if two else initial_bytes(RULES[rec["start"].get("rule", "all")])
     out = []
     for m in rec["moves"]:
-        if st[102:105] != bytes(3):
+        if st[102:105] != bytes(3) and not two:
             break
         out.append(st)
         s2, w = shogi3_rs.play_policy_index(st, policy_index(m["mv"]))
@@ -40,6 +55,8 @@ def positions(rec, lead_min):
         if w is not None:
             break
     arr = np.frombuffer(b"".join(out), dtype=np.uint8).reshape(-1, 109)
+    if two:
+        return arr
     is_lead = np.array([len(lead_states({"states": r[None]}, lead_min)) > 0 for r in arr], dtype=bool)
     if not is_lead.any():
         return arr[:0]
