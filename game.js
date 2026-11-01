@@ -106,7 +106,7 @@ function netMove(_g){
       if(res.error) throw new Error(res.error);
       const v=res.value.map(x=>Math.round(x*100));
       console.log(`学習AI ${PNAME_BASE[turn]}: 勝率予想 青${v[0]}% 赤${v[1]}% 緑${v[2]}%（${res.sec}秒、${res.visits}回探索）`, res.top);
-      if(res.move){ applyMove(res.move,turn); if(gameRecord&&gameRecord.moves.length) gameRecord.moves[gameRecord.moves.length-1].v=res.value; render(); }
+      if(res.move){ applyMove(res.move,turn); if(gameRecord&&gameRecord.moves.length) { const m=gameRecord.moves[gameRecord.moves.length-1]; m.v=res.value; m.n=res.visits; } render(); }
       if(!gover) nextTurn(board);
     })
     .catch(e=>{

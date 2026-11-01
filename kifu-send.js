@@ -4,6 +4,7 @@
 //   人が脱落したところで打ち止め（そのあとの AI どうしの手は送らない）。10手未満は送らない
 //   送るとき：人が脱落した・対局が終わった・新しい対局を始めた・ページを閉じた。同じ対局は同じ gid で送り、サーバーは手の多いほうを残す
 //   送るもの：指し手・どの席が人だったか・ルール・AI の種類。名前などは送らない（プライバシーポリシーの「三人将棋の棋譜」）
+//   AI の種類には、学習AIが GPU（webgpu）か CPU（wasm）か、1手あたりの読み数（中央値）も付ける。例 pbig2-gen330:2000ms:webgpu:n412（2026-11-01）
 //   みんなと指す部屋の対局は、サーバーが自分で保存するのでここでは送らない
 (function () {
   // 手元で開いたときは送らない（試すときは ?kifuapi=http://127.0.0.1:8787/kifu のように送り先を付ける）
@@ -49,6 +50,11 @@
     const orig = loadGameRecordText;
     window.loadGameRecordText = function () { const r = orig.apply(this, arguments); if (gameRecord) skip.add(gameRecord); return r; };
   }
+  // 学習AIの GPU/CPU と、AI の手の読み数の中央値（game.js が手に n を付ける）
+  const netInfo = (rec) => {
+    const ns = rec.moves.filter((m) => m.n > 0).map((m) => m.n).sort((a, b) => a - b);
+    return (window.LocalAI && LocalAI.provider ? ':' + LocalAI.provider : '') + (ns.length ? ':n' + ns[ns.length >> 1] : '');
+  };
   let cur = null;   // {rec, gid, humans:Set, cut, sent, ai}
   const payload = (c) => {
     const n = c.cut ?? c.rec.moves.length;
@@ -75,7 +81,7 @@
     }
     if (!cur) return;
     if (!selfPlayMode && humanPlayer >= 0 && !(cur.cut !== null)) cur.humans.add(humanPlayer);
-    cur.ai = aiKind === 'net' ? (window.LocalAI && LocalAI.model || 'net') + ':' + netTimeMs + 'ms' : 'cpu';
+    cur.ai = aiKind === 'net' ? (window.LocalAI && LocalAI.model || 'net') + ':' + netTimeMs + 'ms' + netInfo(rec) : 'cpu';
     if (selfPlayMode) skip.add(rec);
     if (humanEliminated && cur.cut === null) cur.cut = rec.moves.length;   // 人が脱落したところで打ち止め
     if (cur.cut !== null || gover) send(cur);
