@@ -18,8 +18,12 @@
     provider: null,   // "webgpu" か "wasm"
     visits: 800,
     batch: 16,
-    temp: 0.5,        // 序盤のランダムさ（0で常に最多票の手）
-    tempPlies: 15,
+    // 手の選び方のランダムさ（KataGo の chosenMoveTemperature にならう。2026-11-01）
+    //   温度 = tempLate + (tempEarly - tempLate) × 0.5^(手数 / tempHalflife)。読んだ回数の (1/温度) 乗に比例して選ぶ
+    //   序盤は 0.5 でばらけ、だんだん 0.1 に近づく（0.1 は読み数がほぼ同じ手どうしでだけ入れかわる）。読んだ回数が1回以下の手は選ばない
+    tempEarly: 0.5,
+    tempLate: 0.1,
+    tempHalflife: 15,
 
     async init(opt) {
       const o = Object.assign({ model: DEFAULT_MODEL, wasm: "web/shogi3_wasm.wasm" }, opt || {});
@@ -72,14 +76,14 @@
       return { fr: Math.floor(from / 9), fc: from % 9, tr: Math.floor(to / 9), tc: to % 9, pro };
     },
 
-    // req.timeMs があれば、その時間いっぱい探索する（なければ this.visits 回）
+    // req.timeMs があれば、その時間いっぱい探索する（なければ req.visits 回、それもなければ this.visits 回）
     async think(req) {
       const w = this.w, ort = global.ort, t0 = performance.now();
       const timed = req.timeMs > 0;
       const st = this.encode(req);
       const sp = w.alloc(109);
       new Uint8Array(w.memory.buffer, sp, 109).set(st);
-      const ctx = w.search_new(sp, timed ? 100000 : this.visits, this.batch, 1.5);
+      const ctx = w.search_new(sp, timed ? 100000 : req.visits > 0 ? req.visits : this.visits, this.batch, 1.5);
       w.dealloc(sp, 109);
       let bufP = 0, bufV = 0, capP = 0, capV = 0;
       try {
@@ -125,8 +129,9 @@
         }
         kids.sort((a, b) => b.visits - a.visits);
         let pick = kids[0];
-        if (this.temp > 0 && req.moveCount < this.tempPlies && kids.length > 1 && pick.idx >= 0) {
-          const ws = kids.map((x) => Math.pow(x.visits, 1 / this.temp));
+        const temp = this.tempLate + (this.tempEarly - this.tempLate) * Math.pow(0.5, (req.moveCount || 0) / this.tempHalflife);
+        if (temp > 0 && kids.length > 1 && pick.idx >= 0 && pick.visits > 1) {
+          const ws = kids.map((x) => (x.visits > 1 ? Math.pow(x.visits / pick.visits, 1 / temp) : 0));
           let r = Math.random() * ws.reduce((a, b) => a + b, 0);
           for (let i = 0; i < kids.length; i++) { r -= ws[i]; if (r <= 0) { pick = kids[i]; break; } }
         }

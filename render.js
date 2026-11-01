@@ -248,7 +248,7 @@ function drawPlayerLabels(){
   const who=(o)=>{
     if(o===humanPlayer&&!selfPlayMode) return '';
     const d=DIFFICULTY_LEVELS[currentDifficulty]; if(!d) return '';
-    const sec=(d.net?netTimeMs:thinkMs)/1000+L('秒','s');
+    const sec=d.net?netLimitText():thinkMs/1000+L('秒','s');
     if(d.net){
       const m=window.LocalAI&&LocalAI.model?LocalAI.model.replace(/^pbig2-gen/,L('世代','gen ')):'';
       return `　${L('学習AI','Neural AI')}${m?' '+m:''} ${sec}`;

@@ -456,7 +456,7 @@ window.addEventListener('DOMContentLoaded', () => {
   canvas = $('c'); ctx = canvas.getContext('2d'); canvas.width = CW; canvas.height = CH;
   canvas.addEventListener('click', onBoardClick);
   // CPU：学習AIが使えなければ、手作りの CPU（中級・2秒）
-  currentDifficulty = 'net'; netTimeMs = CPU_MS; AI_TIME_LIMIT_MS = CPU_MS;
+  currentDifficulty = 'net'; netTimeMs = CPU_MS; netVisits = 0; AI_TIME_LIMIT_MS = CPU_MS;
   AI_SEARCH_DEPTH = DIFFICULTY_LEVELS.normal.depth; AI_NOISE = DIFFICULTY_LEVELS.normal.noise;
   if (!ROOMID) { showRooms(); return; }
   draw();

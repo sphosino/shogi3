@@ -308,6 +308,7 @@ function copyGameRecord(){
     version: 1,
     difficulty: currentDifficulty,
     netTimeMs,
+    netVisits,
     model: (window.LocalAI && LocalAI.ready) ? LocalAI.model : null,
     human: humanPlayer,
     start: gameRecord ? gameRecord.start : null,
@@ -714,15 +715,23 @@ function setDifficulty(level){
   });
   // 難易度ラベル更新
   const lbl = document.getElementById('diff-label');
-  if(lbl) lbl.textContent = cfg.net ? L('🧠 難易度: 学習AI（'+thinkMs/1000+'秒）','🧠 Level: Neural AI ('+thinkMs/1000+'s)') : cfg.emoji+L(' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）',' Level: CPU '+cfg.label+' ('+thinkMs/1000+'s)');
+  if(lbl) lbl.textContent = cfg.net ? L('🧠 難易度: 学習AI（'+netLimitText()+'）','🧠 Level: Neural AI ('+netLimitText()+')') : cfg.emoji+L(' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）',' Level: CPU '+cfg.label+' ('+thinkMs/1000+'s)');
 }
 
 // ── AIの種類（CPU / 学習AI）と考える時間 ──
 // CPU は時間に合わせて従来の入門〜上級の設定を使う（8秒は上級の設定で8秒）。学習AIはその時間いっぱい探索する
 const CPU_LEVEL_BY_MS = {500:'beginner', 1000:'easy', 2000:'normal', 4000:'hard', 8000:'hard'};
 function setAIKind(kind){ aiKind = kind; applyAISetting(); }
-function setThinkTime(ms){ thinkMs = Number(ms) || 2000; applyAISetting(); }
+// 「v400」のような値は学習AIの読む回数（CPU のときは選べない）
+function setThinkTime(ms){
+  const v = String(ms).match(/^v(\d+)$/);
+  if(v) netVisits = Number(v[1]); else { netVisits = 0; thinkMs = Number(ms) || 2000; }
+  applyAISetting();
+}
 function applyAISetting(){
+  const sel = document.getElementById('think-time');
+  if(aiKind !== 'net' && netVisits){ netVisits = 0; if(sel) sel.value = String(thinkMs); }
+  if(sel) sel.querySelectorAll('option[value^="v"]').forEach(o=>{ o.disabled = aiKind !== 'net'; });
   if(aiKind === 'net'){
     netTimeMs = thinkMs;
     setDifficulty('net');

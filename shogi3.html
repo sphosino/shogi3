@@ -142,12 +142,15 @@ window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
         <span id="diff-label" style="color:#ffaa44;font-size:13px;letter-spacing:1px;" data-en="⚔️ Level: CPU Normal (2s)">⚔️ 難易度: CPU 中級（2秒）</span>
         <button id="diff-cpu" onclick="setAIKind('cpu')" title="手作りのAI（駒の価値で読む）。考える時間で強さが変わります：0.5秒＝入門、1秒＝初級、2秒＝中級、4秒以上＝上級" data-en-title="Hand-made AI (reads by piece values). Strength depends on thinking time: 0.5s = Beginner, 1s = Easy, 2s = Normal, 4s+ = Hard">⚔️ CPU</button>
         <button id="diff-net" onclick="setAIKind('net')" title="自己対局で学習したネット。ブラウザ内（GPU、なければCPU）か、play_server.py で動きます。考える時間いっぱい探索します" data-en-title="A network trained by self-play. Runs in your browser (GPU, or CPU if none) or via play_server.py. Searches for the full thinking time" data-en="🧠 Neural AI">🧠 学習AI</button>
-        <select id="think-time" onchange="setThinkTime(this.value)" title="AIが1手に考える時間（長いほど強い）" data-en-title="How long the AI thinks per move (longer = stronger)" style="background:#2a1200;border:1px solid #804010;color:#c0a060;border-radius:4px;padding:2px 4px;">
+        <select id="think-time" onchange="setThinkTime(this.value)" title="AIが1手に考える時間（長いほど強い）。学習AIは読む回数でも選べます（どの端末でも同じ強さ。スマホでは1600回だと1手に数十秒かかります）" data-en-title="How long the AI thinks per move (longer = stronger). The Neural AI can also be set by visits (same strength on any device; 1600 visits can take tens of seconds per move on a phone)" style="background:#2a1200;border:1px solid #804010;color:#c0a060;border-radius:4px;padding:2px 4px;">
           <option value="500" data-en="0.5s">0.5秒</option>
           <option value="1000" data-en="1s">1秒</option>
           <option value="2000" selected data-en="2s">2秒</option>
           <option value="4000" data-en="4s">4秒</option>
           <option value="8000" data-en="8s">8秒</option>
+          <option value="v100" data-en="100 visits (Neural AI)">100回（学習AI）</option>
+          <option value="v400" data-en="400 visits (Neural AI)">400回（学習AI）</option>
+          <option value="v1600" data-en="1600 visits (Neural AI)">1600回（学習AI）</option>
         </select>
       </div>
       <!-- 共闘設定行 -->
@@ -215,14 +218,14 @@ window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
 <script src="i18n.js"></script>
 <script src="sound.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.webgpu.min.js"></script>
-<script src="web/ai.js"></script>
-<script src="constants.js?v=20261025"></script>
+<script src="web/ai.js?v=20261101"></script>
+<script src="constants.js?v=20261101"></script>
 <script src="game.js?v=20261101"></script>
 <script src="attack-maps.js"></script>
 <script src="ai.js"></script>
 <script src="engine.js"></script>
-<script src="render.js?v=20261025"></script>
-<script src="ui.js?v=20261031"></script>
+<script src="render.js?v=20261101"></script>
+<script src="ui.js?v=20261101"></script>
 <script src="review.js?v=20261029"></script>
 <script src="share.js?v=4"></script>
 <script src="kifu-send.js?v=20261101"></script>

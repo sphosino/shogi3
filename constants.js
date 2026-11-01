@@ -25,6 +25,9 @@ let currentDifficulty = 'normal';
 let aiKind = 'net';    // 'cpu'（従来のAI）か 'net'（学習AI）。画面の「CPU / 学習AI」ボタン。最初は学習AI（2026-10-19、トップで「学習したAI」と書いているので）
 let thinkMs = 2000;    // AIが1手に考える時間（ミリ秒）。画面で選ぶ
 let netTimeMs = 2000;  // 学習AIの考える時間（thinkMs と同じ。ui.js の applyAISetting が設定）
+let netVisits = 0;     // 学習AIの読む回数（0 なら netTimeMs の時間で読む）。どの端末でも同じ強さにしたいとき。画面で選ぶ
+// 学習AIの読み方の表示（「400回」「2秒」）
+function netLimitText(){ return netVisits ? netVisits+L('回',' visits') : netTimeMs/1000+L('秒','s'); }
 
 // ── AI探索パラメータ（難易度別に上書き） ──
 let AI_SEARCH_DEPTH         = DIFFICULTY_LEVELS.normal.depth;

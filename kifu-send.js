@@ -5,6 +5,7 @@
 //   送るとき：人が脱落した・対局が終わった・新しい対局を始めた・ページを閉じた。同じ対局は同じ gid で送り、サーバーは手の多いほうを残す
 //   送るもの：指し手・どの席が人だったか・ルール・AI の種類。名前などは送らない（プライバシーポリシーの「三人将棋の棋譜」）
 //   AI の種類には、学習AIが GPU（webgpu）か CPU（wasm）か、1手あたりの読み数（中央値）も付ける。例 pbig2-gen330:2000ms:webgpu:n412（2026-11-01）
+//   読む回数で指したときは時間のかわりに回数を書く。例 pbig2-gen330:v400:webgpu:n400
 //   みんなと指す部屋の対局は、サーバーが自分で保存するのでここでは送らない
 (function () {
   // 手元で開いたときは送らない（試すときは ?kifuapi=http://127.0.0.1:8787/kifu のように送り先を付ける）
@@ -81,7 +82,7 @@
     }
     if (!cur) return;
     if (!selfPlayMode && humanPlayer >= 0 && !(cur.cut !== null)) cur.humans.add(humanPlayer);
-    cur.ai = aiKind === 'net' ? (window.LocalAI && LocalAI.model || 'net') + ':' + netTimeMs + 'ms' + netInfo(rec) : 'cpu';
+    cur.ai = aiKind === 'net' ? (window.LocalAI && LocalAI.model || 'net') + ':' + (netVisits ? 'v' + netVisits : netTimeMs + 'ms') + netInfo(rec) : 'cpu';
     if (selfPlayMode) skip.add(rec);
     if (humanEliminated && cur.cut === null) cur.cut = rec.moves.length;   // 人が脱落したところで打ち止め
     if (cur.cut !== null || gover) send(cur);
