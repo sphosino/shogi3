@@ -82,7 +82,8 @@
     }
     if (!cur) return;
     if (!selfPlayMode && humanPlayer >= 0 && !(cur.cut !== null)) cur.humans.add(humanPlayer);
-    cur.ai = aiKind === 'net' ? (window.LocalAI && LocalAI.model || 'net') + ':' + (netVisits ? 'v' + netVisits : netTimeMs + 'ms') + netInfo(rec) : 'cpu';
+    const netAi = () => (window.LocalAI && LocalAI.model || 'net') + ':' + (netVisits ? 'v' + netVisits : netTimeMs + 'ms') + netInfo(rec);
+    cur.ai = aiKind === 'net' ? netAi() : aiKind === 'mix' ? 'mix' + [0, 1, 2].findIndex(seatIsNet) + ':' + netAi() : 'cpu';   // mix1:… なら赤が学習AI
     if (selfPlayMode) skip.add(rec);
     if (humanEliminated && cur.cut === null) cur.cut = rec.moves.length;   // 人が脱落したところで打ち止め
     if (cur.cut !== null || gover) send(cur);

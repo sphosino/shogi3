@@ -57,7 +57,7 @@ function kickAI(){
     if(_g!==gameGen||gover) return;
     setTimeout(()=>{
       if(_g!==gameGen||gover) return;
-      if(DIFFICULTY_LEVELS[currentDifficulty].net){ netMove(_g); return; }
+      if(seatIsNet(turn)){ netMove(_g); return; }
       try{
         const mv=aiMove(turn,board,hand,eliminated);
         if(mv){ applyMove(mv,turn); if(showBoard) render(); if(!gover) nextTurn(board); }

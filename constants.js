@@ -22,7 +22,7 @@ const DIFFICULTY_LEVELS = {
 };
 const AI_MAX_DEPTH = 12; // 反復深化の上限深さ（時間切れで実際はこれより浅く終わる）
 let currentDifficulty = 'normal';
-let aiKind = 'net';    // 'cpu'（従来のAI）か 'net'（学習AI）。画面の「CPU / 学習AI」ボタン。最初は学習AI（2026-10-19、トップで「学習したAI」と書いているので）
+let aiKind = 'net';    // 'cpu'（従来のAI）か 'net'（学習AI）か 'mix'（学習AI と CPU が1人ずつ。人の次に指す席が学習AI）。画面の「CPU / 学習AI」ボタン。最初は学習AI（2026-10-19、トップで「学習したAI」と書いているので）
 let thinkMs = 2000;    // AIが1手に考える時間（ミリ秒）。画面で選ぶ
 let netTimeMs = 2000;  // 学習AIの考える時間（thinkMs と同じ。ui.js の applyAISetting が設定）
 let netVisits = 0;     // 学習AIの読む回数（0 なら netTimeMs の時間で読む）。どの端末でも同じ強さにしたいとき。画面で選ぶ
@@ -107,6 +107,8 @@ let selected, vmoves, selHand, promoQ, lastMove;
 let eliminated;
 let viewPlayer  = 0;
 let humanPlayer = 0;
+// その席を学習AIが指すか（'mix' では人の次に指す席だけ。人がいない自己対局では赤）
+function seatIsNet(o){ return aiKind === 'net' || (aiKind === 'mix' && o === (humanPlayer >= 0 ? (humanPlayer + 1) % 3 : 1)); }
 let humanEliminated = false;
 let cpuCollusion = false;
 let keepAllPieces = true; // 'all'=常に持ち駒、'next'=次のプレイヤーへ、false=消滅あり

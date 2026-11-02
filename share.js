@@ -39,14 +39,14 @@ const Share = (() => {
   function soloText() {
     const me = humanPlayer, color = SEAT[me], how = HOW[winType] || HOW.normal, n = moveCount;
     const d = DIFFICULTY_LEVELS[currentDifficulty] || {};
-    const opp = d.net ? L('学習AI', 'the neural AI') : L(`CPU（${d.label || ''}）`, `the CPU (${d.label || ''})`);
+    const opp = aiKind === 'mix' ? L(`学習AIとCPU（${d.label || ''}）`, `the neural AI and the CPU (${d.label || ''})`) : d.net ? L('学習AI', 'the neural AI') : L(`CPU（${d.label || ''}）`, `the CPU (${d.label || ''})`);
     const k = out.indexOf(me); // 脱落した順（0 が最初）
     const place = k === 0 ? 3 : k === 1 ? 2 : null;
     if (EN) {
-      if (winner === me) return `I beat 2 × ${opp} at Three-Player Shogi! (${color} · ${how} · ${n} moves)`;
+      if (winner === me) return aiKind === 'mix' ? `I beat ${opp} at Three-Player Shogi! (${color} · ${how} · ${n} moves)` : `I beat 2 × ${opp} at Three-Player Shogi! (${color} · ${how} · ${n} moves)`;
       return place ? `I took on ${opp} at Three-Player Shogi and placed ${place === 2 ? '2nd' : '3rd'} (${color} · ${n} moves)` : `I lost to ${opp} at Three-Player Shogi… (${color} · ${SEAT[winner]} won by ${how} · ${n} moves)`;
     }
-    if (winner === me) return `三人将棋で、${opp} 2人に勝った！（${color}・${how}・${n}手）`;
+    if (winner === me) return aiKind === 'mix' ? `三人将棋で、${opp}に勝った！（${color}・${how}・${n}手）` : `三人将棋で、${opp} 2人に勝った！（${color}・${how}・${n}手）`;
     return place ? `三人将棋で、${opp}に挑んで${place}位でした（${color}・${n}手）` : `三人将棋で、${opp}に負けた…（${color}・${SEAT[winner]}が${how}で勝ち・${n}手）`;
   }
   function update() {

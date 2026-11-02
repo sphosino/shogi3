@@ -666,7 +666,7 @@ function setCpuCollusion(val){
       : L('⚔️ <span style="color:#ff4433">CPU①</span>・<span style="color:#33bb55">CPU②</span>は<span style="color:#c2601a">それぞれ自分の勝利</span>を目指します。','⚔️ <span style="color:#ff4433">CPU 1</span> and <span style="color:#33bb55">CPU 2</span> each play for <span style="color:#c2601a">their own win</span>.');
   }
   // 学習AIは共闘しない（共闘は手作りCPUだけの設定）。学習AIのときはボタンを押せなくして、そう書く
-  const net = typeof aiKind !== 'undefined' && aiKind === 'net';
+  const net = typeof aiKind !== 'undefined' && aiKind !== 'cpu';   // 学習AI が入るときは共闘なし（'mix' の CPU も自分の勝利を目指す）
   [onBtn, offBtn].forEach(b=>{ if(b && !selfPlayMode){ b.disabled = net; b.style.opacity = net ? '0.35' : '1'; } });
   if(net){
     const t = L('🧠 学習AIは共闘しません。いつも<span style="color:#c2601a">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）','🧠 The neural AI never teams up. Each one always plays only for <span style="color:#c2601a">its own win</span> (teaming up is a setting for the hand-made CPU)');
@@ -706,16 +706,13 @@ function setDifficulty(level){
   AI_NOISE             = cfg.noise;
   AI_TIME_LIMIT_MS     = cfg.timeMs;
   // ボタンハイライト更新（CPU / 学習AI の2つ）
-  ['cpu','net'].forEach(k=>{
+  ['cpu','net','mix'].forEach(k=>{
     const btn=document.getElementById('diff-'+k);
-    if(btn){
-      const active = (k==='net') === !!cfg.net;
-      btn.classList.toggle('on',active);
-    }
+    if(btn) btn.classList.toggle('on', k===aiKind);
   });
   // 難易度ラベル更新
   const lbl = document.getElementById('diff-label');
-  if(lbl) lbl.textContent = cfg.net ? L('🧠 難易度: 学習AI（'+netLimitText()+'）','🧠 Level: Neural AI ('+netLimitText()+')') : cfg.emoji+L(' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）',' Level: CPU '+cfg.label+' ('+thinkMs/1000+'s)');
+  if(lbl) lbl.textContent = aiKind==='mix' ? L('🧠⚔️ 難易度: 学習AI（'+netLimitText()+'）＋CPU '+cfg.label+'（'+thinkMs/1000+'秒）','🧠⚔️ Level: Neural AI ('+netLimitText()+') + CPU '+cfg.label+' ('+thinkMs/1000+'s)') : cfg.net ? L('🧠 難易度: 学習AI（'+netLimitText()+'）','🧠 Level: Neural AI ('+netLimitText()+')') : cfg.emoji+L(' 難易度: CPU '+cfg.label+'（'+thinkMs/1000+'秒）',' Level: CPU '+cfg.label+' ('+thinkMs/1000+'s)');
 }
 
 // ── AIの種類（CPU / 学習AI）と考える時間 ──
@@ -730,12 +727,14 @@ function setThinkTime(ms){
 }
 function applyAISetting(){
   const sel = document.getElementById('think-time');
-  if(aiKind !== 'net' && netVisits){ netVisits = 0; if(sel) sel.value = String(thinkMs); }
-  if(sel) sel.querySelectorAll('option[value^="v"]').forEach(o=>{ o.disabled = aiKind !== 'net'; });
+  if(aiKind === 'cpu' && netVisits){ netVisits = 0; if(sel) sel.value = String(thinkMs); }
+  if(sel) sel.querySelectorAll('option[value^="v"]').forEach(o=>{ o.disabled = aiKind === 'cpu'; });
+  if(aiKind === 'mix' && cpuCollusion) cpuCollusion = false;   // CPU 1人では共闘しない
   if(aiKind === 'net'){
     netTimeMs = thinkMs;
     setDifficulty('net');
   } else {
+    if(aiKind === 'mix') netTimeMs = thinkMs;   // 学習AI はこの時間（読む回数を選んだらその回数）、CPU は時間に合わせた強さ
     setDifficulty(CPU_LEVEL_BY_MS[thinkMs] || 'normal');
     AI_TIME_LIMIT_MS = thinkMs;
   }
@@ -753,7 +752,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
   applyAISetting();
-  if(aiKind==='net') initNet();   // 学習AIの重み（約22MB）を、対局が始まる前から裏で読みこんでおく
+  if(aiKind!=='cpu') initNet();   // 学習AIの重み（約22MB）を、対局が始まる前から裏で読みこんでおく
   setCpuCollusion(false);
   setKeepAllPieces('all');
   setHumanPlayer(0);
