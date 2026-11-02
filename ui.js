@@ -669,7 +669,7 @@ function setCpuCollusion(val){
   const net = typeof aiKind !== 'undefined' && aiKind !== 'cpu';   // 学習AI が入るときは共闘なし（'mix' の CPU も自分の勝利を目指す）
   [onBtn, offBtn].forEach(b=>{ if(b && !selfPlayMode){ b.disabled = net; b.style.opacity = net ? '0.35' : '1'; } });
   if(net){
-    const t = L('🧠 学習AIは共闘しません。いつも<span style="color:#c2601a">それぞれ自分の勝利</span>だけを目指して指します（共闘は手作りCPU用の設定です）','🧠 The neural AI never teams up. Each one always plays only for <span style="color:#c2601a">its own win</span> (teaming up is a setting for the hand-made CPU)');
+    const t = L('🧠 学習AIは組んでいません。いつも<span style="color:#c2601a">それぞれ自分の勝利</span>だけを目指して指します。ただし、今の学習AIは<span style="color:#c2601a">駒得している人を狙う傾向</span>があります（共闘は手作りCPU用の設定です）','🧠 The neural AIs do not team up. Each one always plays only for <span style="color:#c2601a">its own win</span>. That said, the current neural AI <span style="color:#c2601a">tends to target whoever is ahead in material</span> (teaming up is a setting for the hand-made CPU)');
     if(desc) desc.innerHTML = t;
     if(warn) warn.innerHTML = t;
   }
