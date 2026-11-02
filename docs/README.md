@@ -17,6 +17,7 @@
 | [evaluation.md](evaluation.md) | 強さの測り方・比較相手 |
 | [findings.md](findings.md) | **三人将棋でAIが見つけたこと**（賭けの捨て駒、リードしても勝てない、席の有利不利と配置の実験） |
 | [experiments.md](experiments.md) | 研究実験（席の有利不利・戦力差と勝率など）と、分かったこと（pmix のころまで） |
+| [style_ideas.md](style_ideas.md) | **棋風・報酬・相手のタイプ**（持ち駒は多すぎると損、狙われるのは駒得している人、順位の報酬のつまみ a などの案） |
 | [open_questions.md](open_questions.md) | 決めたこと・未確定事項・リスク |
 
 ## v1.3（2026-10-30）
