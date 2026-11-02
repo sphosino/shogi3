@@ -63,7 +63,7 @@ def parse():
     p.add_argument("--lead-share", type=float, default=0.0, help="学習バッチのうち「特別な局面から」の山の割合（大差局面・start_positions/ の局面から指し直した対局）")
     p.add_argument("--lead-min", type=int, default=12, help="大差局面：3人とも生きていて、トップが2位より駒数（盤上の玉以外＋持ち駒）でこの枚数以上多い局面")
     p.add_argument("--two-share", type=float, default=0.0, help="二人将棋（緑が脱落した start_positions/ の局面）から指す対局を別の山に分け、自己対局と学習でこの割合を使う。0なら二人将棋の局面は「特別な局面から」に混ぜる")
-    p.add_argument("--two-weights", type=float, nargs=3, default=[0.3, 0.4, 0.3], help="二人将棋の山の中身：初期配置・そこからランダムに指した局面・人の棋譜（human-*.npy）の割合")
+    p.add_argument("--two-weights", type=float, nargs="+", default=[0.3, 0.4, 0.3], help="二人将棋の山の中身：初期配置・そこからランダムに指した局面・人の棋譜（human-*.npy）・飛車先の歩の局面（rookpawn-*.npy、make_rookpawn_positions.py）の割合。3つだけなら飛車先の局面は使わない")
     p.add_argument("--eval-two-vs", nargs="*", default=[], help="二人将棋の評価の相手（gen:N）。初期配置から、青赤と先手を入れ替えて指す")
     p.add_argument("--eval-two-games", type=int, default=200, help="二人将棋の評価の局数（4通りに等分）")
     p.add_argument("--lead-from", type=int, default=182, help="大差局面を集める自己対局のシャード：この世代から（それより前は記録の形が違う）")
@@ -275,12 +275,15 @@ def main():
         if extra:
             ex = np.concatenate([np.load(f) for f in extra])
             if a.two_share > 0:   # 二人将棋の局面は別の山へ。初期配置・ランダムに指した局面・人の棋譜に分ける
-                human = np.concatenate([np.full(len(np.load(f, mmap_mode="r")), os.path.basename(f).startswith("human")) for f in extra])
+                kind = lambda pre: np.concatenate([np.full(len(np.load(f, mmap_mode="r")), os.path.basename(f).startswith(pre)) for f in extra])
+                human, rookpawn = kind("human"), kind("rookpawn")
                 is2 = (ex[:, 102] == 0) & (ex[:, 103] == 0) & (ex[:, 104] == 1)
                 mc = ex[:, 106].astype(int) + ex[:, 107].astype(int) * 256
-                two_groups = [ex[is2 & (mc == 0) & ~human], ex[is2 & (mc > 0) & ~human], ex[is2 & human]]
+                other = ~human & ~rookpawn
+                two_groups = [ex[is2 & (mc == 0) & other], ex[is2 & (mc > 0) & other], ex[is2 & human], ex[is2 & rookpawn]]
                 ex = ex[~is2]
-                log(f"  二人将棋の局面：初期配置 {len(two_groups[0])}・ランダムに指した {len(two_groups[1])}・人の棋譜 {len(two_groups[2])}（割合 {a.two_weights}）")
+                log(f"  二人将棋の局面：初期配置 {len(two_groups[0])}・ランダムに指した {len(two_groups[1])}・人の棋譜 {len(two_groups[2])}"
+                    f"・飛車先の歩 {len(two_groups[3])}（割合 {a.two_weights}）")
             starts = np.concatenate([starts, ex])
             log(f"  追加の局面（人の対局・成り駒だらけ・二人将棋。start_positions/）から {len(ex)}局面（{len(extra)}ファイル）→ {len(starts)}局面")
 
