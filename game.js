@@ -7,6 +7,7 @@ function init(){
   selected=null; vmoves=[]; selHand=false; promoQ=null;
   eliminated=[false,false,false];
   lastMove=null; humanEliminated=false; gameGen++;
+  netLowStreak=[0,0,0];
   moveCount=0;
   winType='normal';
   kifu=[];
@@ -98,6 +99,30 @@ async function askNet(req){
 // 学習AIは同時に2つ考えられない（重なると WebAssembly が壊れる）。前の考えが終わるのを待ってから次を考える
 let netChain=Promise.resolve();
 function askNetInOrder(req){ const r=netChain.then(()=>askNet(req)); netChain=r.catch(()=>{}); return r; }
+// 学習AIの投了：二人になって人と指しているとき、読んだあとの自分の勝率予想が3%未満の手番が3回続いたら、指すかわりに投了する（読み方は変えない）。
+// 自己対局（gen346〜357）では、二人になってから3%未満で投了すると、逆転されるはずだった対局は1%未満だった
+const NET_RESIGN_BELOW=0.03, NET_RESIGN_STREAK=3;
+let netLowStreak=[0,0,0];
+function netShouldResign(res,o){
+  const vsHuman=!selfPlayMode && humanPlayer>=0 && !eliminated[humanPlayer] && eliminated.filter(e=>!e).length===2;
+  netLowStreak[o]=vsHuman && res.value[o]<NET_RESIGN_BELOW ? netLowStreak[o]+1 : 0;
+  return netLowStreak[o]>=NET_RESIGN_STREAK;
+}
+function resignNet(o){
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++){
+    const x=board[r][c];
+    if(x && x.o===o && x.p==='OU') board[r][c]=null;
+  }
+  eliminated[o]=true;
+  if(gameRecord) gameRecord.moves.push({o, resign:true});
+  kifu.push({fugo:L('投了','Resign'), col:PCOL[o], name:PNAME_BASE[o]});
+  renderKifu();
+  buildAttackMaps(board);
+  gover=true; winner=[0,1,2].find(i=>!eliminated[i]);
+  setStatus('🎉 '+L(pName(o)+'が投了しました。'+pName(winner)+'の勝ち！',pName(o)+' resigned. '+(winner===humanPlayer?'You win!':pName(winner)+' wins!')));
+  render();
+}
+
 function netMove(_g){
   const req={board, hand, eliminated, turn, moveCount, rule:keepAllPieces, timeMs:netVisits?0:netTimeMs, visits:netVisits};
   askNetInOrder(req)
@@ -106,6 +131,7 @@ function netMove(_g){
       if(res.error) throw new Error(res.error);
       const v=res.value.map(x=>Math.round(x*100));
       console.log(`学習AI ${PNAME_BASE[turn]}: 勝率予想 青${v[0]}% 赤${v[1]}% 緑${v[2]}%（${res.sec}秒、${res.visits}回探索）`, res.top);
+      if(netShouldResign(res,turn)){ resignNet(turn); return; }
       if(res.move){ applyMove(res.move,turn); if(gameRecord&&gameRecord.moves.length) { const m=gameRecord.moves[gameRecord.moves.length-1]; m.v=res.value; m.n=res.visits; } render(); }
       if(!gover) nextTurn(board);
     })
