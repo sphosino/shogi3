@@ -10,7 +10,7 @@
 
   // 使う重み。ページの URL に ?model=pbig2-gen296 のように付けると、web/models/ の別の重みを使う（手元で試すとき）
   const q = new URLSearchParams(global.location ? global.location.search : "").get("model");
-  const DEFAULT_MODEL = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen344.onnx";
+  const DEFAULT_MODEL = q && /^[\w-]+$/.test(q) ? "web/models/" + q + ".onnx" : "web/models/pbig2-gen360.onnx";
 
   const LocalAI = {
     ready: false,
