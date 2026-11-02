@@ -11,6 +11,10 @@
 使い方（リポジトリ直下）:
   python/.venv/Scripts/python.exe python/scripts/make_rookpawn_positions.py --run pbig2 --gen 344 --n 4000 --out runs/pbig2/start_positions/rookpawn-2026-11-02.npy
   python/.venv/Scripts/python.exe python/scripts/make_rookpawn_positions.py --run pbig2 --gen 344 --n 1000 --stops 2四歩打 --seed 2 --out runs/pbig2/start_positions/rookpawn-2026-11-02-24fu.npy
+  python/.venv/Scripts/python.exe python/scripts/make_rookpawn_positions.py --run pbig2 --gen 360 --n 3000 --guard 金 金 銀 --seed 3 --out runs/pbig2/start_positions/rookpawn-2026-11-02-32kin.npy
+
+--guard を付けると、受ける側が 2四歩 の前に 3二金（4一の金）か 3二銀（3一の銀）を指す（付けた中から1つ選ぶ）。
+学習AIは 3二金 をほとんど指さないので、指したあとの局面を自分で経験できず、価値を学べない（gen360 で 2五歩 のあと 3二金 0/60）。
 """
 import argparse
 import os
@@ -28,6 +32,8 @@ from shogi3ml.selfplay import evaluate_batch  # noqa: E402
 from make_twoplayer_positions import initial  # noqa: E402
 
 FU = 0
+GUARD = {"金": 0 * 9 + 5, "銀": 0 * 9 + 6}   # 赤が受けるときの元（4一の金・3一の銀）。行き先は 3二
+GUARD_TO = 1 * 9 + 6
 # 青が攻めるときの手順（盤の番号は 行*9+列。2筋 は列7）。(名前, 元, 先, 成り, 打つ駒)
 STEPS = [("2六歩", 6 * 9 + 7, 5 * 9 + 7, 0, None), ("2五歩", 5 * 9 + 7, 4 * 9 + 7, 0, None), ("2四歩", 4 * 9 + 7, 3 * 9 + 7, 0, None),
          ("同飛", 7 * 9 + 7, 3 * 9 + 7, 0, None), ("2八飛", 3 * 9 + 7, 7 * 9 + 7, 0, None), ("2四歩打", None, 3 * 9 + 7, 0, FU)]
@@ -72,6 +78,7 @@ def main():
     ap.add_argument("--filler", type=float, default=0.3, help="攻める側の手番で、手順の手のかわりにネットの手を指す確率")
     ap.add_argument("--max-filler", type=int, default=3)
     ap.add_argument("--stops", nargs="+", default=STOPS, choices=STOPS, help="止めるところ（この中から均等に選ぶ）")
+    ap.add_argument("--guard", nargs="*", default=[], choices=list(GUARD), help="受ける側が 2四歩 の前に 3二 へ上がる駒（この中から1つ選ぶ）")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
@@ -84,6 +91,9 @@ def main():
         attacker, first = int(rng.integers(2)), int(rng.integers(2))
         target = a.stops[int(rng.integers(len(a.stops)))]
         st, k, fillers, ok = bytes(initial(first)), 0, 0, False
+        guard = a.guard[int(rng.integers(len(a.guard)))] if a.guard else None
+        if guard:   # 受ける側から見た 3二（受ける側が青なら盤を回す）
+            gm = ((GUARD[guard] if attacker == 0 else flip(GUARD[guard])) * 2) * 81 + (GUARD_TO if attacker == 0 else flip(GUARD_TO))
         for _ply in range(60):
             legal = legal_moves(st)
             if not legal:
@@ -105,6 +115,10 @@ def main():
                     fillers += 1
                 else:
                     mv, k = idx, k + 1
+            elif guard and k in (1, 2) and (k == 2 or rng.random() < 0.5):
+                if gm not in legal:
+                    break
+                mv, guard = gm, None
             else:
                 mv = sample(model, dev, st, legal, rng)
             s2, w = shogi3_rs.play_policy_index(st, mv)
@@ -114,6 +128,8 @@ def main():
             if st[105] != attacker and k > 0 and STEPS[k - 1][0] == target and mv == step_index(STEPS[k - 1], attacker):
                 ok = True
                 break
+        if ok and guard:
+            ok = False   # 3二 に上がる前に止まった
         if ok:
             out.append(np.frombuffer(st, dtype=np.uint8))
             stops[("青" if attacker == 0 else "赤") + "が攻め・" + target] += 1
